@@ -51,8 +51,8 @@
 # 52 "mgolexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
-   "\000\000\221\255\222\255\223\255\224\255\225\255\226\255\227\255\
-    \228\255\229\255\232\255\234\255\002\000\019\000\048\000\031\000\
+   "\000\000\222\255\223\255\224\255\225\255\226\255\227\255\228\255\
+    \229\255\230\255\232\255\234\255\002\000\019\000\048\000\031\000\
     \032\000\033\000\035\000\002\000\001\000\249\255\079\000\089\000\
     \113\000\105\000\254\255\255\255\252\255\253\255\192\000\215\000\
     \253\000\020\001\248\255\247\255\246\255\245\255\244\255\243\255\
@@ -61,8 +61,8 @@ let __ocaml_lex_tables = {
     \250\255\021\001\255\255\251\255\252\255\253\255\254\255";
   Lexing.lex_backtrk =
    "\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
-    \255\255\255\255\255\255\255\255\034\000\020\000\019\000\018\000\
-    \017\000\024\000\016\000\034\000\025\000\255\255\005\000\005\000\
+    \255\255\255\255\255\255\255\255\033\000\020\000\019\000\018\000\
+    \017\000\024\000\016\000\033\000\033\000\255\255\005\000\005\000\
     \004\000\022\000\255\255\255\255\255\255\255\255\255\255\255\255\
     \005\000\005\000\255\255\255\255\255\255\255\255\255\255\255\255\
     \255\255\255\255\255\255\255\255\255\255\255\255\255\255\003\000\
@@ -367,54 +367,49 @@ let
 # 368 "mgolexer.ml"
 
   | 25 ->
-# 98 "mgolexer.mll"
-                          ( AMPERSAND )
+# 100 "mgolexer.mll"
+                          ( LPAR )
 # 373 "mgolexer.ml"
 
   | 26 ->
-# 100 "mgolexer.mll"
-                          ( LPAR )
+# 101 "mgolexer.mll"
+                          ( RPAR )
 # 378 "mgolexer.ml"
 
   | 27 ->
-# 101 "mgolexer.mll"
-                          ( RPAR )
+# 102 "mgolexer.mll"
+                          ( BEGIN )
 # 383 "mgolexer.ml"
 
   | 28 ->
-# 102 "mgolexer.mll"
-                          ( BEGIN )
+# 103 "mgolexer.mll"
+                          ( END )
 # 388 "mgolexer.ml"
 
   | 29 ->
-# 103 "mgolexer.mll"
-                          ( END )
+# 104 "mgolexer.mll"
+                          ( SEMI )
 # 393 "mgolexer.ml"
 
   | 30 ->
-# 104 "mgolexer.mll"
-                          ( SEMI )
+# 105 "mgolexer.mll"
+                          ( COMMA )
 # 398 "mgolexer.ml"
 
   | 31 ->
-# 105 "mgolexer.mll"
-                          ( COMMA )
+# 106 "mgolexer.mll"
+                          ( DOT )
 # 403 "mgolexer.ml"
 
   | 32 ->
-# 106 "mgolexer.mll"
-                          ( DOT )
+# 109 "mgolexer.mll"
+                          ( EOF )
 # 408 "mgolexer.ml"
 
   | 33 ->
-# 109 "mgolexer.mll"
-                          ( EOF )
-# 413 "mgolexer.ml"
-
-  | 34 ->
 # 112 "mgolexer.mll"
                           ( raise (Error ("unknown character: " ^ Lexing.lexeme lexbuf)) )
-# 418 "mgolexer.ml"
+# 413 "mgolexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_token_rec lexbuf __ocaml_lex_state
@@ -426,22 +421,22 @@ and __ocaml_lex_comment_rec lexbuf __ocaml_lex_state =
       | 0 ->
 # 116 "mgolexer.mll"
                           ( () )
-# 430 "mgolexer.ml"
+# 425 "mgolexer.ml"
 
   | 1 ->
 # 117 "mgolexer.mll"
                           ( new_line lexbuf; comment lexbuf )
-# 435 "mgolexer.ml"
+# 430 "mgolexer.ml"
 
   | 2 ->
 # 118 "mgolexer.mll"
                           ( raise (Error "unterminated comment") )
-# 440 "mgolexer.ml"
+# 435 "mgolexer.ml"
 
   | 3 ->
 # 119 "mgolexer.mll"
                           ( comment lexbuf )
-# 445 "mgolexer.ml"
+# 440 "mgolexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_comment_rec lexbuf __ocaml_lex_state
@@ -453,17 +448,17 @@ and __ocaml_lex_line_comment_rec lexbuf __ocaml_lex_state =
       | 0 ->
 # 123 "mgolexer.mll"
                           ( new_line lexbuf )
-# 457 "mgolexer.ml"
+# 452 "mgolexer.ml"
 
   | 1 ->
 # 124 "mgolexer.mll"
                           ( () )
-# 462 "mgolexer.ml"
+# 457 "mgolexer.ml"
 
   | 2 ->
 # 125 "mgolexer.mll"
                           ( line_comment lexbuf )
-# 467 "mgolexer.ml"
+# 462 "mgolexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_line_comment_rec lexbuf __ocaml_lex_state
@@ -476,43 +471,43 @@ and __ocaml_lex_string_rec lexbuf __ocaml_lex_state =
 # 130 "mgolexer.mll"
                           ( let s = Buffer.contents str_buf in
                             STRING s )
-# 480 "mgolexer.ml"
+# 475 "mgolexer.ml"
 
   | 1 ->
 # 132 "mgolexer.mll"
                           ( Buffer.add_char str_buf '\n'; string lexbuf )
-# 485 "mgolexer.ml"
+# 480 "mgolexer.ml"
 
   | 2 ->
 # 133 "mgolexer.mll"
                           ( Buffer.add_char str_buf '\t'; string lexbuf )
-# 490 "mgolexer.ml"
+# 485 "mgolexer.ml"
 
   | 3 ->
 # 134 "mgolexer.mll"
                           ( Buffer.add_char str_buf '\"'; string lexbuf )
-# 495 "mgolexer.ml"
+# 490 "mgolexer.ml"
 
   | 4 ->
 # 135 "mgolexer.mll"
                           ( Buffer.add_char str_buf '\\'; string lexbuf )
-# 500 "mgolexer.ml"
+# 495 "mgolexer.ml"
 
   | 5 ->
 # 137 "mgolexer.mll"
                           ( raise (Error "unterminated string literal") )
-# 505 "mgolexer.ml"
+# 500 "mgolexer.ml"
 
   | 6 ->
 # 138 "mgolexer.mll"
                           ( raise (Error "unterminated string literal") )
-# 510 "mgolexer.ml"
+# 505 "mgolexer.ml"
 
   | 7 ->
 # 141 "mgolexer.mll"
                           ( Buffer.add_string str_buf (Lexing.lexeme lexbuf);
                             string lexbuf )
-# 516 "mgolexer.ml"
+# 511 "mgolexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_string_rec lexbuf __ocaml_lex_state

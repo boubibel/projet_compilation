@@ -95,7 +95,7 @@ rule token = parse
   | '/'                   { SLASH }
   | '%'                   { PERCENT }
   | '!'                   { NOT }
-  | '&'                   { AMPERSAND }
+
 
   | '('                   { LPAR }
   | ')'                   { RPAR }

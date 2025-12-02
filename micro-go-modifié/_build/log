@@ -3,7 +3,7 @@
 # Shared cache: enabled-except-user-rules
 # Shared cache location: /Users/lucas/.cache/dune/db
 # Workspace root:
-# "/Users/lucas/Desktop/Cours/Compilation/Projet/micro-go-modifie\204\129"
+# "/Users/lucas/Desktop/projet_compilation/micro-go-modifi\195\169"
 # Auto-detected concurrency: 10
 # Dune context:
 #  { name = "default"
@@ -14,43 +14,16 @@
 #  ; build_dir = In_build_dir "default"
 #  ; instrument_with = []
 #  }
-$ /Users/lucas/.opam/default/bin/ocamlc.opt -config > /var/folders/sd/bg9wss7s20xgjjkhh9jlfs4h0000gn/T/dune_1f53bb_output
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamllex -q -o mgolexer.ml mgolexer.mll)
+$ /Users/lucas/.opam/default/bin/ocamlc.opt -config > /var/folders/sd/bg9wss7s20xgjjkhh9jlfs4h0000gn/T/dune_cfdd38_output
 $ (cd _build/default && /Users/lucas/.opam/default/bin/menhir --explain --dump mgoparser.mly --base mgoparser --infer-write-query mgoparser__mock.ml.mock)
-> File "mgoparser.mly", line 25, characters 7-16:
-> Warning: the token AMPERSAND is unused.
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamldep.opt -modules -impl mgoc.ml) > _build/default/.mgoc.eobjs/dune__exe__Mgoc.impl.d
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamldep.opt -modules -impl mgolexer.ml) > _build/default/.mgoc.eobjs/dune__exe__Mgolexer.impl.d
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamldep.opt -modules -impl typechecker.ml) > _build/default/.mgoc.eobjs/dune__exe__Typechecker.impl.d
 $ (cd _build/default && /Users/lucas/.opam/default/bin/ocamldep.opt -modules -impl mgoparser__mock.ml.mock) > _build/default/.mgoc.eobjs/mgoparser__mock.impl.d
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamldep.opt -modules -impl mgoast.ml) > _build/default/.mgoc.eobjs/dune__exe__Mgoast.impl.d
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -w -49 -nopervasives -nostdlib -g -bin-annot -bin-annot-occurrences -I .mgoc.eobjs/byte -no-alias-deps -opaque -o .mgoc.eobjs/byte/dune__exe.cmo -c -impl .mgoc.eobjs/dune__exe.ml-gen)
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -bin-annot -bin-annot-occurrences -I .mgoc.eobjs/byte -no-alias-deps -opaque -open Dune__exe -o .mgoc.eobjs/byte/dune__exe__Mgoast.cmo -c -impl mgoast.ml)
-$ (cd _build/.sandbox/bfc23820bf297e13ac64f5c03141a587/default && /Users/lucas/.opam/default/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -I .mgoc.eobjs/byte -open Dune__exe -short-paths -i -impl mgoparser__mock.ml.mock) > _build/.sandbox/bfc23820bf297e13ac64f5c03141a587/default/mgoparser__mock.mli.inferred
+$ (cd _build/.sandbox/5dc3f31571e12771974ca4b4156a698a/default && /Users/lucas/.opam/default/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -I .mgoc.eobjs/byte -open Dune__exe -short-paths -i -impl mgoparser__mock.ml.mock) > _build/.sandbox/5dc3f31571e12771974ca4b4156a698a/default/mgoparser__mock.mli.inferred
 $ (cd _build/default && /Users/lucas/.opam/default/bin/menhir --explain --dump mgoparser.mly --base mgoparser --infer-read-reply mgoparser__mock.mli.inferred)
-> Warning: 4 states have shift/reduce conflicts.
-> Warning: one state has reduce/reduce conflicts.
-> Warning: 6 shift/reduce conflicts were arbitrarily resolved.
-> Warning: one reduce/reduce conflict was arbitrarily resolved.
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamldep.opt -modules -intf mgoparser.mli) > _build/default/.mgoc.eobjs/dune__exe__Mgoparser.intf.d
+> File "mgoparser.mly", line 42, characters 0-5:
+> Warning: the precedence level assigned to DOT is never useful.
+> Warning: one state has shift/reduce conflicts.
+> Warning: one shift/reduce conflict was arbitrarily resolved.
 $ (cd _build/default && /Users/lucas/.opam/default/bin/ocamldep.opt -modules -impl mgoparser.ml) > _build/default/.mgoc.eobjs/dune__exe__Mgoparser.impl.d
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -bin-annot -bin-annot-occurrences -I .mgoc.eobjs/byte -no-alias-deps -opaque -open Dune__exe -o .mgoc.eobjs/byte/dune__exe__Mgoparser.cmi -c -intf mgoparser.mli)
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -bin-annot -bin-annot-occurrences -I .mgoc.eobjs/byte -no-alias-deps -opaque -open Dune__exe -o .mgoc.eobjs/byte/dune__exe__Mgolexer.cmo -c -impl mgolexer.ml)
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -bin-annot -bin-annot-occurrences -I .mgoc.eobjs/byte -no-alias-deps -opaque -open Dune__exe -o .mgoc.eobjs/byte/dune__exe__Typechecker.cmo -c -impl typechecker.ml)
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlc.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -bin-annot -bin-annot-occurrences -I .mgoc.eobjs/byte -no-alias-deps -opaque -open Dune__exe -o .mgoc.eobjs/byte/dune__exe__Mgoc.cmo -c -impl mgoc.ml)
-> File "mgoc.ml", line 37, characters 8-9:
-> 37 |     let f = Typechecker.prog  f in
->              ^
-> Warning 26 [unused-var]: unused variable f.
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -w -49 -nopervasives -nostdlib -g -I .mgoc.eobjs/byte -I .mgoc.eobjs/native -cmi-file .mgoc.eobjs/byte/dune__exe.cmi -no-alias-deps -opaque -o .mgoc.eobjs/native/dune__exe.cmx -c -impl .mgoc.eobjs/dune__exe.ml-gen)
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -I .mgoc.eobjs/byte -I .mgoc.eobjs/native -cmi-file .mgoc.eobjs/byte/dune__exe__Mgoast.cmi -no-alias-deps -opaque -open Dune__exe -o .mgoc.eobjs/native/dune__exe__Mgoast.cmx -c -impl mgoast.ml)
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -I .mgoc.eobjs/byte -I .mgoc.eobjs/native -cmi-file .mgoc.eobjs/byte/dune__exe__Mgoc.cmi -no-alias-deps -opaque -open Dune__exe -o .mgoc.eobjs/native/dune__exe__Mgoc.cmx -c -impl mgoc.ml)
-> File "mgoc.ml", line 37, characters 8-9:
-> 37 |     let f = Typechecker.prog  f in
->              ^
-> Warning 26 [unused-var]: unused variable f.
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -I .mgoc.eobjs/byte -I .mgoc.eobjs/native -cmi-file .mgoc.eobjs/byte/dune__exe__Mgolexer.cmi -no-alias-deps -opaque -open Dune__exe -o .mgoc.eobjs/native/dune__exe__Mgolexer.cmx -c -impl mgolexer.ml)
-$ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -I .mgoc.eobjs/byte -I .mgoc.eobjs/native -cmi-file .mgoc.eobjs/byte/dune__exe__Typechecker.cmi -no-alias-deps -opaque -open Dune__exe -o .mgoc.eobjs/native/dune__exe__Typechecker.cmx -c -impl typechecker.ml)
 $ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -I .mgoc.eobjs/byte -I .mgoc.eobjs/native -cmi-file .mgoc.eobjs/byte/dune__exe__Mgoparser.cmi -no-alias-deps -opaque -open Dune__exe -o .mgoc.eobjs/native/dune__exe__Mgoparser.cmx -c -impl mgoparser.ml)
 $ (cd _build/default && /Users/lucas/.opam/default/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -warn-error -A -g -o mgoc.exe .mgoc.eobjs/native/dune__exe.cmx .mgoc.eobjs/native/dune__exe__Mgoast.cmx .mgoc.eobjs/native/dune__exe__Mgoparser.cmx .mgoc.eobjs/native/dune__exe__Mgolexer.cmx .mgoc.eobjs/native/dune__exe__Typechecker.cmx .mgoc.eobjs/native/dune__exe__Mgoc.cmx)
 # Promoting "_build/default/mgoc.exe" to "mgoc.exe"

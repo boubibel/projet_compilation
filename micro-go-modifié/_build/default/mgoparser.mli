@@ -44,7 +44,6 @@ type token =
   | BEGIN
   | ASSIGN
   | AND
-  | AMPERSAND
 
 (* This exception is raised by the monolithic API functions. *)
 

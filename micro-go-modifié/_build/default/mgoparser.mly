@@ -22,7 +22,7 @@ open Mgoast
 %token AND OR                             /* && || */
 %token ASSIGN DECLARE                     /* = := */
 %token PLUSPLUS MINUSMINUS                /* ++ -- */
-%token AMPERSAND                          /* & */
+/* ampersand token removed (unused) */
 
 /* constantes et identifiants */
 %token <Int64.t> INT
@@ -73,8 +73,7 @@ prog:
 
 decls:
   | /* vide */           { [] }
-  | ds=decls d=decl      { d :: ds }
-  | d=decl               { [d] }
+  | d=decl ds=decls      { d :: ds }
 ;
 
 decl:
@@ -121,6 +120,18 @@ field_decl:
 ident_list:
   | i=ident                      { [i] }
   | il=ident_list COMMA i=ident  { il @ [i] }
+;
+
+/* ident_list_more: helper that requires at least one comma-separated tail (used to avoid reduce/reduce) */
+ident_list_more:
+  | i=ident { [i] }
+  | i=ident COMMA rest=ident_list_more { i :: rest }
+;
+
+/* ids_decl: identifier list used specifically for ':=' (allows single or comma-separated) */
+ids_decl:
+  | id=ident { [id] }
+  | id=ident COMMA rest=ident_list_more { id :: rest }
 ;
 
 /* --------------------------------------------------------- */
@@ -301,7 +312,7 @@ instr_simple:
       { Dec e }
   | lhs=expr_list ASSIGN rhs=expr_list
       { Set (List.rev lhs, List.rev rhs) }
-  | ids=ident_list DECLARE es=expr_list
+  | ids=ids_decl DECLARE es=expr_list
       {
         (* x,y := e1,...,en  ≡  var x,y = e1,...,en *)
         let loc = ($startpos, $endpos) in
@@ -325,142 +336,85 @@ expr_list:
 /*                        EXPRESSIONS                        */
 /* ========================================================= */
 
-expr:
-  | n=INT
+/* primary: atomic values and parenthesized expressions */
+primary:
+  | n=INT      { let loc = ($startpos, $endpos) in { edesc = Int n; eloc = loc } }
+  | s=STRING   { let loc = ($startpos, $endpos) in { edesc = String s; eloc = loc } }
+  | TRUE       { let loc = ($startpos, $endpos) in { edesc = Bool true; eloc = loc } }
+  | FALSE      { let loc = ($startpos, $endpos) in { edesc = Bool false; eloc = loc } }
+  | NIL        { let loc = ($startpos, $endpos) in { edesc = Nil; eloc = loc } }
+  | LPAR e=expr RPAR { e }
+  | id=ident   { { edesc = Var id; eloc = id.loc } }
+;
+
+/* postfix_suffix builds a chain of field accesses and calls in right-recursive fashion */
+postfix_suffix:
+  | /* empty */ { fun (p: Mgoast.expr) -> p }
+  | DOT f=ident rest=postfix_suffix
       {
-        let loc = ($startpos, $endpos) in
-        { edesc = Int n; eloc = loc }
-      }
-  | s=STRING
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = String s; eloc = loc }
-      }
-  | TRUE
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Bool true; eloc = loc }
-      }
-  | FALSE
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Bool false; eloc = loc }
-      }
-  | NIL
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Nil; eloc = loc }
-      }
-  | LPAR e=expr RPAR
-      { e }
-  | x=ident
-      {
-        { edesc = Var x; eloc = x.loc }
-      }
-  | e=expr DOT f=ident
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Dot (e, f); eloc = loc }
-      }
-  /* fmt.Print(e1,...,en) -> Print [e1;...;en] */
-  | fmt=ident DOT pr=ident LPAR args=call_args RPAR
-      {
-        if fmt.id = "fmt" && pr.id = "Print" then
+        fun (p: Mgoast.expr) ->
           let loc = ($startpos, $endpos) in
-          { edesc = Print args; eloc = loc }
-        else
-          failwith "only fmt.Print is supported as a dotted call"
+          let r = { edesc = Dot (p, f); eloc = loc } in
+          rest r
       }
-  /* appel de fonction : ident(args) ou new(S) */
-  | f=ident LPAR args=call_args RPAR
+  | LPAR args=call_args RPAR rest=postfix_suffix
       {
-        let loc = ($startpos, $endpos) in
-        if f.id = "new" then
-          match args with
-          | [ { edesc = Var sid; _ } ] ->
-              { edesc = New sid.id; eloc = loc }
-          | _ ->
-              failwith "new expects exactly one struct name argument"
-        else
-          { edesc = Call (f, args); eloc = loc }
+        fun (p: Mgoast.expr) ->
+          let loc = ($startpos, $endpos) in
+          let r = match p.edesc with
+            | Var id ->
+                if id.id = "new" then
+                  (match args with
+                   | [ { edesc = Var sid; _ } ] -> { edesc = New sid.id; eloc = loc }
+                   | _ -> failwith "new expects exactly one struct name argument")
+                else { edesc = Call (id, args); eloc = loc }
+            | Dot (e, pr) ->
+                (match e.edesc with
+                 | Var fmt when fmt.id = "fmt" && pr.id = "Print" -> { edesc = Print args; eloc = loc }
+                 | _ -> failwith "only fmt.Print is supported as a dotted call")
+            | _ -> failwith "invalid function call"
+          in
+          rest r
       }
-  /* unaires */
-  | NOT e=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Unop (Not, e); eloc = loc }
-      }
-  | MINUS e=expr %prec UMINUS
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Unop (Opp, e); eloc = loc }
-      }
-  /* binaires */
-  | e1=expr PLUS e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Add, e1, e2); eloc = loc }
-      }
-  | e1=expr MINUS e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Sub, e1, e2); eloc = loc }
-      }
-  | e1=expr STAR e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Mul, e1, e2); eloc = loc }
-      }
-  | e1=expr SLASH e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Div, e1, e2); eloc = loc }
-      }
-  | e1=expr PERCENT e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Rem, e1, e2); eloc = loc }
-      }
-  | e1=expr EQEQ e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Eq, e1, e2); eloc = loc }
-      }
-  | e1=expr NOTEQ e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Neq, e1, e2); eloc = loc }
-      }
-  | e1=expr LT e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Lt, e1, e2); eloc = loc }
-      }
-  | e1=expr LE e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Le, e1, e2); eloc = loc }
-      }
-  | e1=expr GT e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Gt, e1, e2); eloc = loc }
-      }
-  | e1=expr GE e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Ge, e1, e2); eloc = loc }
-      }
-  | e1=expr AND e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (And, e1, e2); eloc = loc }
-      }
+;
+
+postfix:
+  | prim=primary suf=postfix_suffix { suf prim }
+;
+
+/* expression operators (left-recursive, precedence controlled by %left/%right declarations) */
+expr:
   | e1=expr OR e2=expr
-      {
-        let loc = ($startpos, $endpos) in
-        { edesc = Binop (Or, e1, e2); eloc = loc }
-      }
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Or, e1, e2); eloc = loc } }
+  | e1=expr AND e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (And, e1, e2); eloc = loc } }
+  | e1=expr EQEQ e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Eq, e1, e2); eloc = loc } }
+  | e1=expr NOTEQ e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Neq, e1, e2); eloc = loc } }
+  | e1=expr LT e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Lt, e1, e2); eloc = loc } }
+  | e1=expr LE e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Le, e1, e2); eloc = loc } }
+  | e1=expr GT e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Gt, e1, e2); eloc = loc } }
+  | e1=expr GE e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Ge, e1, e2); eloc = loc } }
+  | e1=expr PLUS e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Add, e1, e2); eloc = loc } }
+  | e1=expr MINUS e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Sub, e1, e2); eloc = loc } }
+  | e1=expr STAR e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Mul, e1, e2); eloc = loc } }
+  | e1=expr SLASH e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Div, e1, e2); eloc = loc } }
+  | e1=expr PERCENT e2=expr
+      { let loc = ($startpos, $endpos) in { edesc = Binop (Rem, e1, e2); eloc = loc } }
+  | NOT e=expr
+      { let loc = ($startpos, $endpos) in { edesc = Unop (Not, e); eloc = loc } }
+  | MINUS e=expr %prec UMINUS
+      { let loc = ($startpos, $endpos) in { edesc = Unop (Opp, e); eloc = loc } }
+  | p=postfix { p }
 ;
 
 /* expr* ,  pour arguments de fonction, avec virgule finale optionnelle */
@@ -470,3 +424,4 @@ call_args:
   | es=call_args COMMA e=expr         { es @ [e] }
   | es=call_args COMMA                { es }   /* virgule finale optionnelle */
 ;
+

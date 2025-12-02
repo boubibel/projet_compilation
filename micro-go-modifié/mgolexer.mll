@@ -2,6 +2,8 @@
   open Lexing
   open Mgoparser
 
+  let split_comma s = List.map String.trim (String.split_on_char ',' s)
+
   exception Error of string
 
   (* Table des mots-clés : si l’identifiant lut est dans la table,
@@ -64,6 +66,20 @@ rule token = parse
   | "//"                  { line_comment lexbuf; token lexbuf }
 
   (* Identificateurs / mots-clés *)
+  (* Special-case: comma-separated identifier list followed by ':=' -> emit IDS_DECL (string list) *)
+  | ident ([' ' '\t']* ',' [' ' '\t']* ident)* [' ' '\t']* ":="
+      {
+        (* s contains the whole lexeme ending with ':='; extract identifiers *)
+        let lex = Lexing.lexeme lexbuf in
+        (* remove trailing ':=' and split by commas *)
+        let without_decl =
+          let n = String.length lex in
+          String.sub lex 0 (n - 2)
+        in
+        let parts = split_comma without_decl in
+        IDS_DECL parts
+      }
+
   | ident as id           { keyword_or_ident id }
 
   (* Constantes entières : décimal ou hexadécimal (0x / 0X) *)
@@ -83,7 +99,7 @@ rule token = parse
   | ">="                  { GE }
   | "++"                  { PLUSPLUS }
   | "--"                  { MINUSMINUS }
-  | ":="                  { DECLARE }
+  (* ":=" is handled by the IDS_DECL rule above; no DECLARE token needed *)
 
   (* Opérateurs et ponctuation simples *)
   | '='                   { ASSIGN }

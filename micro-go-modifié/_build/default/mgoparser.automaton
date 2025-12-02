@@ -5,7 +5,7 @@ State 0:
 prog' -> . prog [ # ]
 ## Transitions:
 -- On PACKAGE shift to state 1
--- On prog shift to state 154
+-- On prog shift to state 147
 ## Reductions:
 
 State 1:
@@ -38,10 +38,10 @@ prog -> PACKAGE IDENT SEMI . IMPORT STRING SEMI decls EOF [ # ]
 -- On TYPE shift to state 4
 -- On IMPORT shift to state 24
 -- On FUNC shift to state 27
--- On structure shift to state 146
--- On fonction shift to state 147
--- On decls shift to state 152
--- On decl shift to state 150
+-- On structure shift to state 139
+-- On fonction shift to state 140
+-- On decls shift to state 145
+-- On decl shift to state 143
 ## Reductions:
 -- On EOF
 --   reduce production decls ->
@@ -60,10 +60,10 @@ State 5:
 ## Known stack suffix:
 ## IDENT
 ## LR(1) items:
-ident -> IDENT . [ STRUCT STAR SLASH SEMI RPAR PLUSPLUS PLUS PERCENT OR NOTEQ MINUSMINUS MINUS LT LPAR LE IDENT GT GE EQEQ END DOT DECLARE COMMA BEGIN ASSIGN AND ]
+ident -> IDENT . [ STRUCT STAR SLASH SEMI RPAR PLUSPLUS PLUS PERCENT OR NOTEQ MINUSMINUS MINUS LT LPAR LE IDENT GT GE EQEQ END DOT COMMA BEGIN ASSIGN AND ]
 ## Transitions:
 ## Reductions:
--- On STRUCT STAR SLASH SEMI RPAR PLUSPLUS PLUS PERCENT OR NOTEQ MINUSMINUS MINUS LT LPAR LE IDENT GT GE EQEQ END DOT DECLARE COMMA BEGIN ASSIGN AND
+-- On STRUCT STAR SLASH SEMI RPAR PLUSPLUS PLUS PERCENT OR NOTEQ MINUSMINUS MINUS LT LPAR LE IDENT GT GE EQEQ END DOT COMMA BEGIN ASSIGN AND
 --   reduce production ident -> IDENT
 
 State 6:
@@ -285,10 +285,10 @@ prog -> PACKAGE IDENT SEMI IMPORT STRING SEMI . decls EOF [ # ]
 ## Transitions:
 -- On TYPE shift to state 4
 -- On FUNC shift to state 27
--- On structure shift to state 146
--- On fonction shift to state 147
--- On decls shift to state 148
--- On decl shift to state 150
+-- On structure shift to state 139
+-- On fonction shift to state 140
+-- On decls shift to state 141
+-- On decl shift to state 143
 ## Reductions:
 -- On EOF
 --   reduce production decls ->
@@ -506,7 +506,7 @@ State 45:
 fonction -> FUNC ident LPAR opt_params RPAR opt_type_ret . bloc SEMI [ TYPE FUNC EOF ]
 ## Transitions:
 -- On BEGIN shift to state 46
--- On bloc shift to state 144
+-- On bloc shift to state 137
 ## Reductions:
 
 State 46:
@@ -526,19 +526,19 @@ bloc -> BEGIN . instrs opt_semi END [ SEMI END ELSE ]
 -- On LPAR shift to state 57
 -- On INT shift to state 58
 -- On IF shift to state 112
+-- On IDS_DECL shift to state 117
 -- On IDENT shift to state 5
--- On FOR shift to state 117
+-- On FOR shift to state 119
 -- On FALSE shift to state 59
--- On END shift to state 121
+-- On END shift to state 123
 -- On primary shift to state 60
 -- On postfix shift to state 62
--- On instrs shift to state 122
--- On instr_simple shift to state 124
--- On instr shift to state 143
--- On ids_decl shift to state 126
--- On ident shift to state 129
--- On expr_list shift to state 135
--- On expr shift to state 138
+-- On instrs shift to state 124
+-- On instr_simple shift to state 126
+-- On instr shift to state 136
+-- On ident shift to state 63
+-- On expr_list shift to state 128
+-- On expr shift to state 131
 ## Reductions:
 
 State 47:
@@ -1933,6 +1933,40 @@ instr -> IF expr bloc ELSE bloc . [ SEMI END ]
 
 State 117:
 ## Known stack suffix:
+## IDS_DECL
+## LR(1) items:
+instr_simple -> IDS_DECL . expr_list [ SEMI END ]
+## Transitions:
+-- On TRUE shift to state 52
+-- On STRING shift to state 53
+-- On NOT shift to state 54
+-- On NIL shift to state 55
+-- On MINUS shift to state 56
+-- On LPAR shift to state 57
+-- On INT shift to state 58
+-- On IDENT shift to state 5
+-- On FALSE shift to state 59
+-- On primary shift to state 60
+-- On postfix shift to state 62
+-- On ident shift to state 63
+-- On expr_list shift to state 118
+-- On expr shift to state 107
+## Reductions:
+
+State 118:
+## Known stack suffix:
+## IDS_DECL expr_list
+## LR(1) items:
+expr_list -> expr_list . COMMA expr [ SEMI END COMMA ]
+instr_simple -> IDS_DECL expr_list . [ SEMI END ]
+## Transitions:
+-- On COMMA shift to state 105
+## Reductions:
+-- On SEMI END
+--   reduce production instr_simple -> IDS_DECL expr_list
+
+State 119:
+## Known stack suffix:
 ## FOR
 ## LR(1) items:
 instr -> FOR . bloc [ SEMI END ]
@@ -1951,11 +1985,11 @@ instr -> FOR . expr bloc [ SEMI END ]
 -- On primary shift to state 60
 -- On postfix shift to state 62
 -- On ident shift to state 63
--- On expr shift to state 118
--- On bloc shift to state 120
+-- On expr shift to state 120
+-- On bloc shift to state 122
 ## Reductions:
 
-State 118:
+State 120:
 ## Known stack suffix:
 ## FOR expr
 ## LR(1) items:
@@ -1988,10 +2022,10 @@ instr -> FOR expr . bloc [ SEMI END ]
 -- On EQEQ shift to state 87
 -- On BEGIN shift to state 46
 -- On AND shift to state 89
--- On bloc shift to state 119
+-- On bloc shift to state 121
 ## Reductions:
 
-State 119:
+State 121:
 ## Known stack suffix:
 ## FOR expr bloc
 ## LR(1) items:
@@ -2001,7 +2035,7 @@ instr -> FOR expr bloc . [ SEMI END ]
 -- On SEMI END
 --   reduce production instr -> FOR expr bloc
 
-State 120:
+State 122:
 ## Known stack suffix:
 ## FOR bloc
 ## LR(1) items:
@@ -2011,7 +2045,7 @@ instr -> FOR bloc . [ SEMI END ]
 -- On SEMI END
 --   reduce production instr -> FOR bloc
 
-State 121:
+State 123:
 ## Known stack suffix:
 ## BEGIN END
 ## LR(1) items:
@@ -2021,20 +2055,20 @@ bloc -> BEGIN END . [ SEMI END ELSE ]
 -- On SEMI END ELSE
 --   reduce production bloc -> BEGIN END
 
-State 122:
+State 124:
 ## Known stack suffix:
 ## BEGIN instrs
 ## LR(1) items:
 bloc -> BEGIN instrs . opt_semi END [ SEMI END ELSE ]
 instrs -> instrs . SEMI instr [ SEMI END ]
 ## Transitions:
--- On SEMI shift to state 123
--- On opt_semi shift to state 141
+-- On SEMI shift to state 125
+-- On opt_semi shift to state 134
 ## Reductions:
 -- On END
 --   reduce production opt_semi ->
 
-State 123:
+State 125:
 ## Known stack suffix:
 ## instrs SEMI
 ## LR(1) items:
@@ -2051,22 +2085,22 @@ opt_semi -> SEMI . [ END ]
 -- On LPAR shift to state 57
 -- On INT shift to state 58
 -- On IF shift to state 112
+-- On IDS_DECL shift to state 117
 -- On IDENT shift to state 5
--- On FOR shift to state 117
+-- On FOR shift to state 119
 -- On FALSE shift to state 59
 -- On primary shift to state 60
 -- On postfix shift to state 62
--- On instr_simple shift to state 124
--- On instr shift to state 125
--- On ids_decl shift to state 126
--- On ident shift to state 129
--- On expr_list shift to state 135
--- On expr shift to state 138
+-- On instr_simple shift to state 126
+-- On instr shift to state 127
+-- On ident shift to state 63
+-- On expr_list shift to state 128
+-- On expr shift to state 131
 ## Reductions:
 -- On END
 --   reduce production opt_semi -> SEMI
 
-State 124:
+State 126:
 ## Known stack suffix:
 ## instr_simple
 ## LR(1) items:
@@ -2076,7 +2110,7 @@ instr -> instr_simple . [ SEMI END ]
 -- On SEMI END
 --   reduce production instr -> instr_simple
 
-State 125:
+State 127:
 ## Known stack suffix:
 ## instrs SEMI instr
 ## LR(1) items:
@@ -2086,120 +2120,7 @@ instrs -> instrs SEMI instr . [ SEMI END ]
 -- On SEMI END
 --   reduce production instrs -> instrs SEMI instr
 
-State 126:
-## Known stack suffix:
-## ids_decl
-## LR(1) items:
-instr_simple -> ids_decl . DECLARE expr_list [ SEMI END ]
-## Transitions:
--- On DECLARE shift to state 127
-## Reductions:
-
-State 127:
-## Known stack suffix:
-## ids_decl DECLARE
-## LR(1) items:
-instr_simple -> ids_decl DECLARE . expr_list [ SEMI END ]
-## Transitions:
--- On TRUE shift to state 52
--- On STRING shift to state 53
--- On NOT shift to state 54
--- On NIL shift to state 55
--- On MINUS shift to state 56
--- On LPAR shift to state 57
--- On INT shift to state 58
--- On IDENT shift to state 5
--- On FALSE shift to state 59
--- On primary shift to state 60
--- On postfix shift to state 62
--- On ident shift to state 63
--- On expr_list shift to state 128
--- On expr shift to state 107
-## Reductions:
-
 State 128:
-## Known stack suffix:
-## ids_decl DECLARE expr_list
-## LR(1) items:
-expr_list -> expr_list . COMMA expr [ SEMI END COMMA ]
-instr_simple -> ids_decl DECLARE expr_list . [ SEMI END ]
-## Transitions:
--- On COMMA shift to state 105
-## Reductions:
--- On SEMI END
---   reduce production instr_simple -> ids_decl DECLARE expr_list
-
-State 129:
-## Known stack suffix:
-## ident
-## LR(1) items:
-ids_decl -> ident . [ DECLARE ]
-ids_decl -> ident . COMMA ident_list_more [ DECLARE ]
-primary -> ident . [ STAR SLASH SEMI PLUSPLUS PLUS PERCENT OR NOTEQ MINUSMINUS MINUS LT LPAR LE GT GE EQEQ END DOT COMMA ASSIGN AND ]
-## Transitions:
--- On COMMA shift to state 130
-## Reductions:
--- On DECLARE
---   reduce production ids_decl -> ident
--- On STAR SLASH SEMI PLUSPLUS PLUS PERCENT OR NOTEQ MINUSMINUS MINUS LT LPAR LE GT GE EQEQ END DOT COMMA ASSIGN AND
---   reduce production primary -> ident
-** Conflict on COMMA
-
-State 130:
-## Known stack suffix:
-## ident COMMA
-## LR(1) items:
-ids_decl -> ident COMMA . ident_list_more [ DECLARE ]
-## Transitions:
--- On IDENT shift to state 5
--- On ident_list_more shift to state 131
--- On ident shift to state 132
-## Reductions:
-
-State 131:
-## Known stack suffix:
-## ident COMMA ident_list_more
-## LR(1) items:
-ids_decl -> ident COMMA ident_list_more . [ DECLARE ]
-## Transitions:
-## Reductions:
--- On DECLARE
---   reduce production ids_decl -> ident COMMA ident_list_more
-
-State 132:
-## Known stack suffix:
-## ident
-## LR(1) items:
-ident_list_more -> ident . [ DECLARE ]
-ident_list_more -> ident . COMMA ident_list_more [ DECLARE ]
-## Transitions:
--- On COMMA shift to state 133
-## Reductions:
--- On DECLARE
---   reduce production ident_list_more -> ident
-
-State 133:
-## Known stack suffix:
-## ident COMMA
-## LR(1) items:
-ident_list_more -> ident COMMA . ident_list_more [ DECLARE ]
-## Transitions:
--- On IDENT shift to state 5
--- On ident_list_more shift to state 134
--- On ident shift to state 132
-## Reductions:
-
-State 134:
-## Known stack suffix:
-## ident COMMA ident_list_more
-## LR(1) items:
-ident_list_more -> ident COMMA ident_list_more . [ DECLARE ]
-## Transitions:
-## Reductions:
--- On DECLARE
---   reduce production ident_list_more -> ident COMMA ident_list_more
-
-State 135:
 ## Known stack suffix:
 ## expr_list
 ## LR(1) items:
@@ -2207,10 +2128,10 @@ expr_list -> expr_list . COMMA expr [ COMMA ASSIGN ]
 instr_simple -> expr_list . ASSIGN expr_list [ SEMI END ]
 ## Transitions:
 -- On COMMA shift to state 105
--- On ASSIGN shift to state 136
+-- On ASSIGN shift to state 129
 ## Reductions:
 
-State 136:
+State 129:
 ## Known stack suffix:
 ## expr_list ASSIGN
 ## LR(1) items:
@@ -2228,11 +2149,11 @@ instr_simple -> expr_list ASSIGN . expr_list [ SEMI END ]
 -- On primary shift to state 60
 -- On postfix shift to state 62
 -- On ident shift to state 63
--- On expr_list shift to state 137
+-- On expr_list shift to state 130
 -- On expr shift to state 107
 ## Reductions:
 
-State 137:
+State 130:
 ## Known stack suffix:
 ## expr_list ASSIGN expr_list
 ## LR(1) items:
@@ -2244,7 +2165,7 @@ instr_simple -> expr_list ASSIGN expr_list . [ SEMI END ]
 -- On SEMI END
 --   reduce production instr_simple -> expr_list ASSIGN expr_list
 
-State 138:
+State 131:
 ## Known stack suffix:
 ## expr
 ## LR(1) items:
@@ -2268,12 +2189,12 @@ instr_simple -> expr . MINUSMINUS [ SEMI END ]
 ## Transitions:
 -- On STAR shift to state 65
 -- On SLASH shift to state 67
--- On PLUSPLUS shift to state 139
+-- On PLUSPLUS shift to state 132
 -- On PLUS shift to state 69
 -- On PERCENT shift to state 71
 -- On OR shift to state 73
 -- On NOTEQ shift to state 75
--- On MINUSMINUS shift to state 140
+-- On MINUSMINUS shift to state 133
 -- On MINUS shift to state 77
 -- On LT shift to state 79
 -- On LE shift to state 81
@@ -2287,7 +2208,7 @@ instr_simple -> expr . MINUSMINUS [ SEMI END ]
 -- On SEMI END
 --   reduce production instr_simple -> expr
 
-State 139:
+State 132:
 ## Known stack suffix:
 ## expr PLUSPLUS
 ## LR(1) items:
@@ -2297,7 +2218,7 @@ instr_simple -> expr PLUSPLUS . [ SEMI END ]
 -- On SEMI END
 --   reduce production instr_simple -> expr PLUSPLUS
 
-State 140:
+State 133:
 ## Known stack suffix:
 ## expr MINUSMINUS
 ## LR(1) items:
@@ -2307,16 +2228,16 @@ instr_simple -> expr MINUSMINUS . [ SEMI END ]
 -- On SEMI END
 --   reduce production instr_simple -> expr MINUSMINUS
 
-State 141:
+State 134:
 ## Known stack suffix:
 ## BEGIN instrs opt_semi
 ## LR(1) items:
 bloc -> BEGIN instrs opt_semi . END [ SEMI END ELSE ]
 ## Transitions:
--- On END shift to state 142
+-- On END shift to state 135
 ## Reductions:
 
-State 142:
+State 135:
 ## Known stack suffix:
 ## BEGIN instrs opt_semi END
 ## LR(1) items:
@@ -2326,7 +2247,7 @@ bloc -> BEGIN instrs opt_semi END . [ SEMI END ELSE ]
 -- On SEMI END ELSE
 --   reduce production bloc -> BEGIN instrs opt_semi END
 
-State 143:
+State 136:
 ## Known stack suffix:
 ## instr
 ## LR(1) items:
@@ -2336,16 +2257,16 @@ instrs -> instr . [ SEMI END ]
 -- On SEMI END
 --   reduce production instrs -> instr
 
-State 144:
+State 137:
 ## Known stack suffix:
 ## FUNC ident LPAR opt_params RPAR opt_type_ret bloc
 ## LR(1) items:
 fonction -> FUNC ident LPAR opt_params RPAR opt_type_ret bloc . SEMI [ TYPE FUNC EOF ]
 ## Transitions:
--- On SEMI shift to state 145
+-- On SEMI shift to state 138
 ## Reductions:
 
-State 145:
+State 138:
 ## Known stack suffix:
 ## FUNC ident LPAR opt_params RPAR opt_type_ret bloc SEMI
 ## LR(1) items:
@@ -2355,7 +2276,7 @@ fonction -> FUNC ident LPAR opt_params RPAR opt_type_ret bloc SEMI . [ TYPE FUNC
 -- On TYPE FUNC EOF
 --   reduce production fonction -> FUNC ident LPAR opt_params RPAR opt_type_ret bloc SEMI
 
-State 146:
+State 139:
 ## Known stack suffix:
 ## structure
 ## LR(1) items:
@@ -2365,7 +2286,7 @@ decl -> structure . [ TYPE FUNC EOF ]
 -- On TYPE FUNC EOF
 --   reduce production decl -> structure
 
-State 147:
+State 140:
 ## Known stack suffix:
 ## fonction
 ## LR(1) items:
@@ -2375,16 +2296,16 @@ decl -> fonction . [ TYPE FUNC EOF ]
 -- On TYPE FUNC EOF
 --   reduce production decl -> fonction
 
-State 148:
+State 141:
 ## Known stack suffix:
 ## PACKAGE IDENT SEMI IMPORT STRING SEMI decls
 ## LR(1) items:
 prog -> PACKAGE IDENT SEMI IMPORT STRING SEMI decls . EOF [ # ]
 ## Transitions:
--- On EOF shift to state 149
+-- On EOF shift to state 142
 ## Reductions:
 
-State 149:
+State 142:
 ## Known stack suffix:
 ## PACKAGE IDENT SEMI IMPORT STRING SEMI decls EOF
 ## LR(1) items:
@@ -2394,7 +2315,7 @@ prog -> PACKAGE IDENT SEMI IMPORT STRING SEMI decls EOF . [ # ]
 -- On #
 --   reduce production prog -> PACKAGE IDENT SEMI IMPORT STRING SEMI decls EOF
 
-State 150:
+State 143:
 ## Known stack suffix:
 ## decl
 ## LR(1) items:
@@ -2402,15 +2323,15 @@ decls -> decl . decls [ EOF ]
 ## Transitions:
 -- On TYPE shift to state 4
 -- On FUNC shift to state 27
--- On structure shift to state 146
--- On fonction shift to state 147
--- On decls shift to state 151
--- On decl shift to state 150
+-- On structure shift to state 139
+-- On fonction shift to state 140
+-- On decls shift to state 144
+-- On decl shift to state 143
 ## Reductions:
 -- On EOF
 --   reduce production decls ->
 
-State 151:
+State 144:
 ## Known stack suffix:
 ## decl decls
 ## LR(1) items:
@@ -2420,16 +2341,16 @@ decls -> decl decls . [ EOF ]
 -- On EOF
 --   reduce production decls -> decl decls
 
-State 152:
+State 145:
 ## Known stack suffix:
 ## PACKAGE IDENT SEMI decls
 ## LR(1) items:
 prog -> PACKAGE IDENT SEMI decls . EOF [ # ]
 ## Transitions:
--- On EOF shift to state 153
+-- On EOF shift to state 146
 ## Reductions:
 
-State 153:
+State 146:
 ## Known stack suffix:
 ## PACKAGE IDENT SEMI decls EOF
 ## LR(1) items:
@@ -2439,7 +2360,7 @@ prog -> PACKAGE IDENT SEMI decls EOF . [ # ]
 -- On #
 --   reduce production prog -> PACKAGE IDENT SEMI decls EOF
 
-State 154:
+State 147:
 ## Known stack suffix:
 ## prog
 ## LR(1) items:

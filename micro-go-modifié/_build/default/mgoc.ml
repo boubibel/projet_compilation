@@ -5,9 +5,11 @@ let usage = "usage: mgoc [options] file.go"
 
 let parse_only = ref false
 let type_only = ref true
-    
+let lex_only = ref false
+
 let spec =
   [ "--parse-only", Arg.Set parse_only, "  stops after parsing";
+    "--lex-only", Arg.Set lex_only, "  dumps lexer lexemes and exits";
     "--type-only", Arg.Set type_only, "  stops after typing";
   ]
 
@@ -31,6 +33,21 @@ let () =
   let c = open_in file in
   let lb = Lexing.from_channel c in
   try
+    if !lex_only then begin
+      (* Dump lexemes one per line *)
+      let rec loop () =
+        let tok = Mgolexer.token lb in
+        let lex = Lexing.lexeme lb in
+        Printf.printf "%s\n" lex;
+        match tok with
+        | Mgoparser.EOF -> ()
+        | _ -> loop ()
+      in
+      loop ();
+      close_in c;
+      exit 0
+    end;
+
     let f = Mgoparser.prog Mgolexer.token lb in
     close_in c;
     if !parse_only then exit 0;

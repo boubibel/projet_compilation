@@ -20,13 +20,14 @@ open Mgoast
 %token NOT                                /* ! */
 %token EQEQ NOTEQ LT LE GT GE             /* == != < <= > >= */
 %token AND OR                             /* && || */
-%token ASSIGN DECLARE                     /* = := */
+%token ASSIGN                     /* = */
 %token PLUSPLUS MINUSMINUS                /* ++ -- */
 /* ampersand token removed (unused) */
 
 /* constantes et identifiants */
 %token <Int64.t> INT
 %token <string> IDENT
+%token <string list> IDS_DECL
 %token <string> STRING
 
 %token EOF
@@ -39,7 +40,6 @@ open Mgoast
 %left PLUS MINUS
 %left STAR SLASH PERCENT
 %right UMINUS NOT
-%left DOT
 
 /* ----- TYPE DE L'AXIOME ----- */
 
@@ -120,18 +120,6 @@ field_decl:
 ident_list:
   | i=ident                      { [i] }
   | il=ident_list COMMA i=ident  { il @ [i] }
-;
-
-/* ident_list_more: helper that requires at least one comma-separated tail (used to avoid reduce/reduce) */
-ident_list_more:
-  | i=ident { [i] }
-  | i=ident COMMA rest=ident_list_more { i :: rest }
-;
-
-/* ids_decl: identifier list used specifically for ':=' (allows single or comma-separated) */
-ids_decl:
-  | id=ident { [id] }
-  | id=ident COMMA rest=ident_list_more { id :: rest }
 ;
 
 /* --------------------------------------------------------- */
@@ -312,17 +300,13 @@ instr_simple:
       { Dec e }
   | lhs=expr_list ASSIGN rhs=expr_list
       { Set (List.rev lhs, List.rev rhs) }
-  | ids=ids_decl DECLARE es=expr_list
+  | ids_token=IDS_DECL es=expr_list
       {
         (* x,y := e1,...,en  ≡  var x,y = e1,...,en *)
         let loc = ($startpos, $endpos) in
-        let lhs =
-          List.map (fun id ->
-              { edesc = Var id; eloc = id.loc }) ids
-        in
-        let set_instr =
-          { idesc = Set (lhs, es); iloc = loc }
-        in
+        let ids = List.map (fun idstr -> { loc = ($startpos, $endpos); id = idstr }) ids_token in
+        let lhs_exprs = List.map (fun id -> { edesc = Var id; eloc = id.loc }) ids in
+        let set_instr = { idesc = Set (lhs_exprs, es); iloc = loc } in
         Vars (ids, None, [set_instr])
       }
 ;

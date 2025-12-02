@@ -28,6 +28,7 @@ type token =
   | INT of (Int64.t)
   | IMPORT
   | IF
+  | IDS_DECL of (string list)
   | IDENT of (string)
   | GT
   | GE
@@ -39,7 +40,6 @@ type token =
   | END
   | ELSE
   | DOT
-  | DECLARE
   | COMMA
   | BEGIN
   | ASSIGN

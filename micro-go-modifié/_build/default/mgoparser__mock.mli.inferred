@@ -25,6 +25,7 @@ type token =
   | INT of int64
   | IMPORT
   | IF
+  | IDS_DECL of string list
   | IDENT of string
   | GT
   | GE
@@ -36,7 +37,6 @@ type token =
   | END
   | ELSE
   | DOT
-  | DECLARE
   | COMMA
   | BEGIN
   | ASSIGN
@@ -61,8 +61,6 @@ val xv_opt_field_decls : (Mgoast.ident * Mgoast.typ) list
 val xv_instrs : Mgoast.seq
 val xv_instr_simple : Mgoast.instr_desc
 val xv_instr : Mgoast.instr
-val xv_ids_decl : Mgoast.ident list
-val xv_ident_list_more : Mgoast.ident list
 val xv_ident_list : Mgoast.ident list
 val xv_ident : Mgoast.ident
 val xv_fonction : Mgoast.func_def

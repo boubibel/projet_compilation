@@ -14,7 +14,7 @@
 #  ; build_dir = In_build_dir "default"
 #  ; instrument_with = []
 #  }
-$ /Users/lucas/.opam/default/bin/ocamlc.opt -config > /var/folders/sd/bg9wss7s20xgjjkhh9jlfs4h0000gn/T/dune_7279ee_output
+$ /Users/lucas/.opam/default/bin/ocamlc.opt -config > /var/folders/sd/bg9wss7s20xgjjkhh9jlfs4h0000gn/T/dune_5072fb_output
 $ (cd _build/default && /Users/lucas/.opam/default/bin/ocamllex -q -o mgolexer.ml mgolexer.mll)
 $ (cd _build/default && /Users/lucas/.opam/default/bin/menhir --explain --dump mgoparser.mly --base mgoparser --infer-write-query mgoparser__mock.ml.mock)
 $ (cd _build/default && /Users/lucas/.opam/default/bin/ocamldep.opt -modules -impl mgoc.ml) > _build/default/.mgoc.eobjs/dune__exe__Mgoc.impl.d

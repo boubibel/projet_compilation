@@ -50,7 +50,17 @@
   (* Buffer utilisé pour construire les chaînes de caractères *)
   let str_buf = Buffer.create 128
 
-# 54 "mgolexer.ml"
+  let last_was_semicolon_candidate = ref false
+
+  let set_last t =
+    last_was_semicolon_candidate :=
+      (match t with
+       | IDENT _ | IDS_DECL _ | INT _ | STRING _ | TRUE | FALSE | NIL
+       | RETURN | PLUSPLUS | MINUSMINUS | RPAR | END -> true
+       | _ -> false);
+    t
+
+# 64 "mgolexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\222\255\223\255\224\255\225\255\226\255\227\255\228\255\
@@ -305,194 +315,196 @@ let rec token lexbuf =
 and __ocaml_lex_token_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 61 "mgolexer.mll"
+# 71 "mgolexer.mll"
                           ( token lexbuf )
-# 311 "mgolexer.ml"
-
-  | 1 ->
-# 62 "mgolexer.mll"
-                          ( new_line lexbuf; token lexbuf )
-# 316 "mgolexer.ml"
-
-  | 2 ->
-# 65 "mgolexer.mll"
-                          ( comment lexbuf; token lexbuf )
 # 321 "mgolexer.ml"
 
+  | 1 ->
+# 72 "mgolexer.mll"
+                          ( new_line lexbuf;
+                             if !last_was_semicolon_candidate then
+                               (last_was_semicolon_candidate := false; SEMI)
+                             else
+                               token lexbuf )
+# 330 "mgolexer.ml"
+
+  | 2 ->
+# 79 "mgolexer.mll"
+                          ( comment lexbuf )
+# 335 "mgolexer.ml"
+
   | 3 ->
-# 66 "mgolexer.mll"
-                          ( line_comment lexbuf; token lexbuf )
-# 326 "mgolexer.ml"
+# 80 "mgolexer.mll"
+                          ( line_comment lexbuf )
+# 340 "mgolexer.ml"
 
   | 4 ->
-# 71 "mgolexer.mll"
+# 85 "mgolexer.mll"
       (
-        (* s contains the whole lexeme ending with ':='; extract identifiers *)
         let lex = Lexing.lexeme lexbuf in
-        (* remove trailing ':=' and split by commas *)
         let without_decl =
           let n = String.length lex in
           String.sub lex 0 (n - 2)
         in
         let parts = split_comma without_decl in
-        IDS_DECL parts
+        set_last (IDS_DECL parts)
       )
-# 341 "mgolexer.ml"
+# 353 "mgolexer.ml"
 
   | 5 ->
 let
-# 83 "mgolexer.mll"
+# 95 "mgolexer.mll"
              id
-# 347 "mgolexer.ml"
+# 359 "mgolexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 83 "mgolexer.mll"
-                          ( keyword_or_ident id )
-# 351 "mgolexer.ml"
+# 95 "mgolexer.mll"
+                          ( set_last (keyword_or_ident id) )
+# 363 "mgolexer.ml"
 
   | 6 ->
 let
-# 88 "mgolexer.mll"
+# 100 "mgolexer.mll"
               s
-# 357 "mgolexer.ml"
+# 369 "mgolexer.ml"
 = Lexing.sub_lexeme lexbuf lexbuf.Lexing.lex_start_pos lexbuf.Lexing.lex_curr_pos in
-# 88 "mgolexer.mll"
-                          ( INT (parse_int_literal s) )
-# 361 "mgolexer.ml"
+# 100 "mgolexer.mll"
+                          ( set_last (INT (parse_int_literal s)) )
+# 373 "mgolexer.ml"
 
   | 7 ->
-# 91 "mgolexer.mll"
+# 103 "mgolexer.mll"
                           ( Buffer.clear str_buf; string lexbuf )
-# 366 "mgolexer.ml"
+# 378 "mgolexer.ml"
 
   | 8 ->
-# 94 "mgolexer.mll"
-                          ( AND )
-# 371 "mgolexer.ml"
+# 106 "mgolexer.mll"
+                          ( set_last AND )
+# 383 "mgolexer.ml"
 
   | 9 ->
-# 95 "mgolexer.mll"
-                          ( OR )
-# 376 "mgolexer.ml"
+# 107 "mgolexer.mll"
+                          ( set_last OR )
+# 388 "mgolexer.ml"
 
   | 10 ->
-# 96 "mgolexer.mll"
-                          ( EQEQ )
-# 381 "mgolexer.ml"
+# 108 "mgolexer.mll"
+                          ( set_last EQEQ )
+# 393 "mgolexer.ml"
 
   | 11 ->
-# 97 "mgolexer.mll"
-                          ( NOTEQ )
-# 386 "mgolexer.ml"
+# 109 "mgolexer.mll"
+                          ( set_last NOTEQ )
+# 398 "mgolexer.ml"
 
   | 12 ->
-# 98 "mgolexer.mll"
-                          ( LE )
-# 391 "mgolexer.ml"
+# 110 "mgolexer.mll"
+                          ( set_last LE )
+# 403 "mgolexer.ml"
 
   | 13 ->
-# 99 "mgolexer.mll"
-                          ( GE )
-# 396 "mgolexer.ml"
+# 111 "mgolexer.mll"
+                          ( set_last GE )
+# 408 "mgolexer.ml"
 
   | 14 ->
-# 100 "mgolexer.mll"
-                          ( PLUSPLUS )
-# 401 "mgolexer.ml"
+# 112 "mgolexer.mll"
+                          ( set_last PLUSPLUS )
+# 413 "mgolexer.ml"
 
   | 15 ->
-# 101 "mgolexer.mll"
-                          ( MINUSMINUS )
-# 406 "mgolexer.ml"
+# 113 "mgolexer.mll"
+                          ( set_last MINUSMINUS )
+# 418 "mgolexer.ml"
 
   | 16 ->
-# 105 "mgolexer.mll"
-                          ( ASSIGN )
-# 411 "mgolexer.ml"
+# 116 "mgolexer.mll"
+                          ( set_last ASSIGN )
+# 423 "mgolexer.ml"
 
   | 17 ->
-# 106 "mgolexer.mll"
-                          ( LT )
-# 416 "mgolexer.ml"
+# 117 "mgolexer.mll"
+                          ( set_last LT )
+# 428 "mgolexer.ml"
 
   | 18 ->
-# 107 "mgolexer.mll"
-                          ( GT )
-# 421 "mgolexer.ml"
+# 118 "mgolexer.mll"
+                          ( set_last GT )
+# 433 "mgolexer.ml"
 
   | 19 ->
-# 108 "mgolexer.mll"
-                          ( PLUS )
-# 426 "mgolexer.ml"
+# 119 "mgolexer.mll"
+                          ( set_last PLUS )
+# 438 "mgolexer.ml"
 
   | 20 ->
-# 109 "mgolexer.mll"
-                          ( MINUS )
-# 431 "mgolexer.ml"
+# 120 "mgolexer.mll"
+                          ( set_last MINUS )
+# 443 "mgolexer.ml"
 
   | 21 ->
-# 110 "mgolexer.mll"
-                          ( STAR )
-# 436 "mgolexer.ml"
+# 121 "mgolexer.mll"
+                          ( set_last STAR )
+# 448 "mgolexer.ml"
 
   | 22 ->
-# 111 "mgolexer.mll"
-                          ( SLASH )
-# 441 "mgolexer.ml"
+# 122 "mgolexer.mll"
+                          ( set_last SLASH )
+# 453 "mgolexer.ml"
 
   | 23 ->
-# 112 "mgolexer.mll"
-                          ( PERCENT )
-# 446 "mgolexer.ml"
+# 123 "mgolexer.mll"
+                          ( set_last PERCENT )
+# 458 "mgolexer.ml"
 
   | 24 ->
-# 113 "mgolexer.mll"
-                          ( NOT )
-# 451 "mgolexer.ml"
+# 124 "mgolexer.mll"
+                          ( set_last NOT )
+# 463 "mgolexer.ml"
 
   | 25 ->
-# 116 "mgolexer.mll"
-                          ( LPAR )
-# 456 "mgolexer.ml"
+# 126 "mgolexer.mll"
+                          ( set_last LPAR )
+# 468 "mgolexer.ml"
 
   | 26 ->
-# 117 "mgolexer.mll"
-                          ( RPAR )
-# 461 "mgolexer.ml"
+# 127 "mgolexer.mll"
+                          ( set_last RPAR )
+# 473 "mgolexer.ml"
 
   | 27 ->
-# 118 "mgolexer.mll"
-                          ( BEGIN )
-# 466 "mgolexer.ml"
+# 128 "mgolexer.mll"
+                          ( set_last BEGIN )
+# 478 "mgolexer.ml"
 
   | 28 ->
-# 119 "mgolexer.mll"
-                          ( END )
-# 471 "mgolexer.ml"
+# 129 "mgolexer.mll"
+                          ( set_last END )
+# 483 "mgolexer.ml"
 
   | 29 ->
-# 120 "mgolexer.mll"
-                          ( SEMI )
-# 476 "mgolexer.ml"
+# 130 "mgolexer.mll"
+                          ( last_was_semicolon_candidate := false; SEMI )
+# 488 "mgolexer.ml"
 
   | 30 ->
-# 121 "mgolexer.mll"
-                          ( COMMA )
-# 481 "mgolexer.ml"
+# 131 "mgolexer.mll"
+                          ( set_last COMMA )
+# 493 "mgolexer.ml"
 
   | 31 ->
-# 122 "mgolexer.mll"
-                          ( DOT )
-# 486 "mgolexer.ml"
+# 132 "mgolexer.mll"
+                          ( set_last DOT )
+# 498 "mgolexer.ml"
 
   | 32 ->
-# 125 "mgolexer.mll"
-                          ( EOF )
-# 491 "mgolexer.ml"
+# 135 "mgolexer.mll"
+                          ( set_last EOF )
+# 503 "mgolexer.ml"
 
   | 33 ->
-# 128 "mgolexer.mll"
+# 138 "mgolexer.mll"
                           ( raise (Error ("unknown character: " ^ Lexing.lexeme lexbuf)) )
-# 496 "mgolexer.ml"
+# 508 "mgolexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_token_rec lexbuf __ocaml_lex_state
@@ -502,24 +514,28 @@ and comment lexbuf =
 and __ocaml_lex_comment_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 132 "mgolexer.mll"
-                          ( () )
-# 508 "mgolexer.ml"
+# 142 "mgolexer.mll"
+                          ( token lexbuf )
+# 520 "mgolexer.ml"
 
   | 1 ->
-# 133 "mgolexer.mll"
-                          ( new_line lexbuf; comment lexbuf )
-# 513 "mgolexer.ml"
+# 143 "mgolexer.mll"
+                          ( new_line lexbuf;
+                            if !last_was_semicolon_candidate then
+                              (last_was_semicolon_candidate := false; SEMI)
+                            else
+                              comment lexbuf )
+# 529 "mgolexer.ml"
 
   | 2 ->
-# 134 "mgolexer.mll"
+# 148 "mgolexer.mll"
                           ( raise (Error "unterminated comment") )
-# 518 "mgolexer.ml"
+# 534 "mgolexer.ml"
 
   | 3 ->
-# 135 "mgolexer.mll"
+# 149 "mgolexer.mll"
                           ( comment lexbuf )
-# 523 "mgolexer.ml"
+# 539 "mgolexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_comment_rec lexbuf __ocaml_lex_state
@@ -529,19 +545,23 @@ and line_comment lexbuf =
 and __ocaml_lex_line_comment_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 139 "mgolexer.mll"
-                          ( new_line lexbuf )
-# 535 "mgolexer.ml"
+# 153 "mgolexer.mll"
+                          ( new_line lexbuf;
+                            if !last_was_semicolon_candidate then
+                              (last_was_semicolon_candidate := false; SEMI)
+                            else
+                              token lexbuf )
+# 555 "mgolexer.ml"
 
   | 1 ->
-# 140 "mgolexer.mll"
-                          ( () )
-# 540 "mgolexer.ml"
+# 158 "mgolexer.mll"
+                          ( EOF )
+# 560 "mgolexer.ml"
 
   | 2 ->
-# 141 "mgolexer.mll"
+# 159 "mgolexer.mll"
                           ( line_comment lexbuf )
-# 545 "mgolexer.ml"
+# 565 "mgolexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_line_comment_rec lexbuf __ocaml_lex_state
@@ -551,46 +571,45 @@ and string lexbuf =
 and __ocaml_lex_string_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 146 "mgolexer.mll"
-                          ( let s = Buffer.contents str_buf in
-                            STRING s )
-# 558 "mgolexer.ml"
+# 164 "mgolexer.mll"
+                          ( let s = Buffer.contents str_buf in set_last (STRING s) )
+# 577 "mgolexer.ml"
 
   | 1 ->
-# 148 "mgolexer.mll"
+# 165 "mgolexer.mll"
                           ( Buffer.add_char str_buf '\n'; string lexbuf )
-# 563 "mgolexer.ml"
+# 582 "mgolexer.ml"
 
   | 2 ->
-# 149 "mgolexer.mll"
+# 166 "mgolexer.mll"
                           ( Buffer.add_char str_buf '\t'; string lexbuf )
-# 568 "mgolexer.ml"
+# 587 "mgolexer.ml"
 
   | 3 ->
-# 150 "mgolexer.mll"
+# 167 "mgolexer.mll"
                           ( Buffer.add_char str_buf '\"'; string lexbuf )
-# 573 "mgolexer.ml"
+# 592 "mgolexer.ml"
 
   | 4 ->
-# 151 "mgolexer.mll"
+# 168 "mgolexer.mll"
                           ( Buffer.add_char str_buf '\\'; string lexbuf )
-# 578 "mgolexer.ml"
+# 597 "mgolexer.ml"
 
   | 5 ->
-# 153 "mgolexer.mll"
+# 170 "mgolexer.mll"
                           ( raise (Error "unterminated string literal") )
-# 583 "mgolexer.ml"
+# 602 "mgolexer.ml"
 
   | 6 ->
-# 154 "mgolexer.mll"
+# 171 "mgolexer.mll"
                           ( raise (Error "unterminated string literal") )
-# 588 "mgolexer.ml"
+# 607 "mgolexer.ml"
 
   | 7 ->
-# 157 "mgolexer.mll"
+# 174 "mgolexer.mll"
                           ( Buffer.add_string str_buf (Lexing.lexeme lexbuf);
                             string lexbuf )
-# 594 "mgolexer.ml"
+# 613 "mgolexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_string_rec lexbuf __ocaml_lex_state

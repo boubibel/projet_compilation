@@ -6,7 +6,7 @@ $(EXE): *.ml*
 	dune build @all
 
 test: $(EXE) tests/test.go
-	-./$(EXE) --parse-only tests/test.go
+	-./$(EXE) --type-only tests/test.go
 
 .PHONY: clean
 clean:

@@ -48,6 +48,16 @@
 
   (* Buffer utilisé pour construire les chaînes de caractères *)
   let str_buf = Buffer.create 128
+
+  let last_was_semicolon_candidate = ref false
+
+  let set_last t =
+    last_was_semicolon_candidate :=
+      (match t with
+       | IDENT _ | IDS_DECL _ | INT _ | STRING _ | TRUE | FALSE | NIL
+       | RETURN | PLUSPLUS | MINUSMINUS | RPAR | END -> true
+       | _ -> false);
+    t
 }
 
 (* Déclarations de regex ocamllex *)
@@ -59,92 +69,99 @@ let ident = alpha (alpha | digit)*
 rule token = parse
   (* Blancs *)
   | [' ' '\t' '\r']       { token lexbuf }
-  | '\n'                  { new_line lexbuf; token lexbuf }
+  | '\n'                  { new_line lexbuf;
+                             if !last_was_semicolon_candidate then
+                               (last_was_semicolon_candidate := false; SEMI)
+                             else
+                               token lexbuf }
 
   (* Commentaires *)
-  | "/*"                  { comment lexbuf; token lexbuf }
-  | "//"                  { line_comment lexbuf; token lexbuf }
+  | "/*"                  { comment lexbuf }
+  | "//"                  { line_comment lexbuf }
 
   (* Identificateurs / mots-clés *)
   (* Special-case: comma-separated identifier list followed by ':=' -> emit IDS_DECL (string list) *)
   | ident ([' ' '\t']* ',' [' ' '\t']* ident)* [' ' '\t']* ":="
       {
-        (* s contains the whole lexeme ending with ':='; extract identifiers *)
         let lex = Lexing.lexeme lexbuf in
-        (* remove trailing ':=' and split by commas *)
         let without_decl =
           let n = String.length lex in
           String.sub lex 0 (n - 2)
         in
         let parts = split_comma without_decl in
-        IDS_DECL parts
+        set_last (IDS_DECL parts)
       }
 
-  | ident as id           { keyword_or_ident id }
+  | ident as id           { set_last (keyword_or_ident id) }
 
   (* Constantes entières : décimal ou hexadécimal (0x / 0X) *)
   | "0x" hexa+ as s
   | "0X" hexa+ as s
-  | digit+ as s           { INT (parse_int_literal s) }
+  | digit+ as s           { set_last (INT (parse_int_literal s)) }
 
   (* Constantes chaînes : on lit le  ouvrant, puis on passe à la règle string *)
   | '"'                   { Buffer.clear str_buf; string lexbuf }
 
   (* Opérateurs et ponctuation multi-caractères – à mettre avant les simples ! *)
-  | "&&"                  { AND }
-  | "||"                  { OR }
-  | "=="                  { EQEQ }
-  | "!="                  { NOTEQ }
-  | "<="                  { LE }
-  | ">="                  { GE }
-  | "++"                  { PLUSPLUS }
-  | "--"                  { MINUSMINUS }
-  (* ":=" is handled by the IDS_DECL rule above; no DECLARE token needed *)
+  | "&&"                  { set_last AND }
+  | "||"                  { set_last OR }
+  | "=="                  { set_last EQEQ }
+  | "!="                  { set_last NOTEQ }
+  | "<="                  { set_last LE }
+  | ">="                  { set_last GE }
+  | "++"                  { set_last PLUSPLUS }
+  | "--"                  { set_last MINUSMINUS }
 
   (* Opérateurs et ponctuation simples *)
-  | '='                   { ASSIGN }
-  | '<'                   { LT }
-  | '>'                   { GT }
-  | '+'                   { PLUS }
-  | '-'                   { MINUS }
-  | '*'                   { STAR }
-  | '/'                   { SLASH }
-  | '%'                   { PERCENT }
-  | '!'                   { NOT }
+  | '='                   { set_last ASSIGN }
+  | '<'                   { set_last LT }
+  | '>'                   { set_last GT }
+  | '+'                   { set_last PLUS }
+  | '-'                   { set_last MINUS }
+  | '*'                   { set_last STAR }
+  | '/'                   { set_last SLASH }
+  | '%'                   { set_last PERCENT }
+  | '!'                   { set_last NOT }
 
-
-  | '('                   { LPAR }
-  | ')'                   { RPAR }
-  | '{'                   { BEGIN }
-  | '}'                   { END }
-  | ';'                   { SEMI }
-  | ','                   { COMMA }
-  | '.'                   { DOT }
+  | '('                   { set_last LPAR }
+  | ')'                   { set_last RPAR }
+  | '{'                   { set_last BEGIN }
+  | '}'                   { set_last END }
+  | ';'                   { last_was_semicolon_candidate := false; SEMI }
+  | ','                   { set_last COMMA }
+  | '.'                   { set_last DOT }
 
   (* Fin de fichier *)
-  | eof                   { EOF }
+  | eof                   { set_last EOF }
 
   (* Caractère inconnu *)
   | _                     { raise (Error ("unknown character: " ^ Lexing.lexeme lexbuf)) }
 
 (* Commentaire multi-ligne C-like : /* ... */  *)
 and comment = parse
-  | "*/"                  { () }
-  | '\n'                  { new_line lexbuf; comment lexbuf }
+  | "*/"                  { token lexbuf } (* on reprend la lecture après la fin du commentaire *)
+  | '\n'                  { new_line lexbuf;
+                            if !last_was_semicolon_candidate then
+                              (last_was_semicolon_candidate := false; SEMI)
+                            else
+                              comment lexbuf }
   | eof                   { raise (Error "unterminated comment") }
   | _                     { comment lexbuf }
 
 (* Commentaire ligne : // ... \n *)
 and line_comment = parse
-  | '\n'                  { new_line lexbuf }
-  | eof                   { () }
+  | '\n'                  { new_line lexbuf;
+                            if !last_was_semicolon_candidate then
+                              (last_was_semicolon_candidate := false; SEMI)
+                            else
+                              token lexbuf }
+  | eof                   { EOF }
   | _                     { line_comment lexbuf }
 
 (* Lecture d’une constante chaîne de caractères.
    On accepte les échappements : \n, \t, \, \\ comme dans le sujet. *)
 and string = parse
-  | '"'                   { let s = Buffer.contents str_buf in
-                            STRING s }
+  | '"'                   { let s = Buffer.contents str_buf in set_last (STRING s) }
   | "\\n"                 { Buffer.add_char str_buf '\n'; string lexbuf }
   | "\\t"                 { Buffer.add_char str_buf '\t'; string lexbuf }
   | "\\\""                { Buffer.add_char str_buf '\"'; string lexbuf }

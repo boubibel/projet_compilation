@@ -4,7 +4,7 @@ open Lexing
 let usage = "usage: mgoc [options] file.go"
 
 let parse_only = ref false
-let type_only = ref true
+let type_only = ref false
     
 let spec =
   [ "--parse-only", Arg.Set parse_only, "  stops after parsing";
@@ -28,14 +28,18 @@ let report_loc (b,e) =
   eprintf "File \"%s\", line %d, characters %d-%d:\n" file l fc lc
 
 let () =
-  let c = open_in file in
-  let lb = Lexing.from_channel c in
+  let ic = open_in file in
+  let lb = Lexing.from_channel ic in
   try
     let f = Mgoparser.prog Mgolexer.token lb in
-    close_in c;
+    close_in ic;
     if !parse_only then exit 0;
-    ignore (Typechecker.prog f);
+    let f = Typechecker.prog f in
     if !type_only then exit 0;
+    let code = Compile.tr_prog f in
+    let oc = open_out (Filename.chop_suffix file ".go" ^ ".s") in
+    Mips.print_program oc code;
+    close_out oc
 
   with
     | Mgolexer.Error s ->

@@ -515,7 +515,7 @@ let check_function (env0 : tenv) (fdef : func_def) : unit =
 (* program = bool * decl list : (import_fmt, decls)                 *)
 (*------------------------------------------------------------------*)
 
-let type_program ((import_fmt, decls) : program) : unit =
+let type_program ((import_fmt, decls) : program) : program =
   ignore import_fmt;
   (* étape 1 : structures sans champs *)
   let senv0 = build_struct_env decls in
@@ -543,6 +543,6 @@ let type_program ((import_fmt, decls) : program) : unit =
     with Not_found ->
       failwith "no main function defined"
   end;
-  ()
+  (import_fmt, decls) (* ici on renvoie le programme initial, mais on peut aussi appliquer des transformations en vue de la compilation *)
 
-  let prog = type_program
+let prog = type_program

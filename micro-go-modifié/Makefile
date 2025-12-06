@@ -1,7 +1,9 @@
 EXE=_build/default/mgoc.exe
 #GOFILES=$(wildcard tests/*.go)  #Teste tous les fichiers .go dans le dossier tests
-GOFILES := $(filter-out tests/test.go, $(wildcard tests/*.go)) 
-#Teste tous les fichiers .go dans le dossier tests sauf test.go
+
+GOFILES := $(filter-out tests/neg%,$(wildcard tests/*.go))
+#Teste tous les fichiers .go dans le dossier tests sauf ceux commençant par neg
+#qu'on teste séparément pour vérifier qu'ils produisent bien l'erreur attendue
 
 all: $(EXE)
 

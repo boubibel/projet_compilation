@@ -31,14 +31,14 @@ type func_sig = {
 (* env des fonctions : map nom_f -> signature *)
 type func_env = func_sig SMap.t
 
-(* env des variables : map nom_var -> type *)
+(* env des variables : pile de maps pour gérer les scopes (top = head) *)
 type var_env = typ SMap.t
 
 (* environnement de typage global/local *)
 type tenv = {
   structs : struct_env;
   funcs   : func_env;
-  vars    : var_env;
+  vars    : var_env list; (* pile de scopes, head = current scope *)
 }
 
 let dummy_loc : location = (Lexing.dummy_pos, Lexing.dummy_pos)
@@ -46,13 +46,26 @@ let dummy_loc : location = (Lexing.dummy_pos, Lexing.dummy_pos)
 (* utilitaires sur var_env : on utilise le nom (string) des identificateurs *)
 let add_var loc (x : ident) ty (env : tenv) : tenv =
   if x.id = "_" then env
-  else if SMap.mem x.id env.vars then
-    error loc (Printf.sprintf "variable %s already defined" x.id)
   else
-    { env with vars = SMap.add x.id ty env.vars }
+    match env.vars with
+    | [] ->
+        let top = SMap.add x.id ty SMap.empty in
+        { env with vars = top :: [] }
+    | top :: rest ->
+        if SMap.mem x.id top then
+          error loc (Printf.sprintf "variable %s already defined" x.id)
+        else
+          let top' = SMap.add x.id ty top in
+          { env with vars = top' :: rest }
 
 let find_var loc (x : ident) (env : tenv) : typ =
-  try SMap.find x.id env.vars
+  let rec find_in_scopes = function
+    | [] -> raise Not_found
+    | top :: rest ->
+        try SMap.find x.id top
+        with Not_found -> find_in_scopes rest
+  in
+  try find_in_scopes env.vars
   with Not_found ->
     error loc (Printf.sprintf "unbound variable %s" x.id)
 
@@ -208,11 +221,7 @@ let rec type_expr (env : tenv) (e : expr) : typ =
            | _ -> ignore (type_expr env e))
         es;
       TInt
-  | Print es ->
-      (* fmt.Print(e1,...,en) : on vérifie seulement que les expressions sont bien typées;
-         on ne l'utilise que comme instruction, donc le type de l'expression importe peu. *)
-      List.iter (fun e -> ignore (type_expr env e)) es;
-      TInt   (* type arbitraire, jamais utilisé dans un contexte qui impose un type *)
+  (* Note: printing handled above; no additional Print case needed here. *)
       
 (*------------------------------------------------------------------*)
 (* Valeurs gauches Γ ⊢l e : τ                                       *)
@@ -306,20 +315,24 @@ and check_instr (env : tenv) (ret : typ list) (i : instr) : tenv =
   | If (e, b1, b2) ->
       let t = type_expr env e in
       if t <> TBool then type_error e.eloc t TBool;
-      ignore (check_seq env ret b1);
-      ignore (check_seq env ret b2);
+      let env_branch = { env with vars = SMap.empty :: env.vars } in
+      ignore (check_seq env_branch ret b1);
+      let env_branch2 = { env with vars = SMap.empty :: env.vars } in
+      ignore (check_seq env_branch2 ret b2);
       env
   | For (e, b) ->
       let t = type_expr env e in
       if t <> TBool then type_error e.eloc t TBool;
-      ignore (check_seq env ret b);
+      let env_loop = { env with vars = SMap.empty :: env.vars } in
+      ignore (check_seq env_loop ret b);
       env
   | Block b ->
-      ignore (check_seq env ret b);
+      let env_block = { env with vars = SMap.empty :: env.vars } in
+      ignore (check_seq env_block ret b);
       env
   | Vars (ids, opt_ty, init_seq) ->
       (* cas var x,y [ty] [= ...]  *)
-      let env_struct_fun = { env with vars = env.vars } in
+      let env_struct_fun = env in
       (* Determine the types for the declared identifiers. Several forms
          are possible:
          - explicit type provided: all ids have that type
@@ -415,7 +428,7 @@ let build_struct_env (decls : decl list) : struct_env =
 
 (* 2(a). Ajout des signatures de fonctions *)
 let build_func_env (structs : struct_env) (decls : decl list) : func_env =
-  let dummy_env = { structs; funcs = SMap.empty; vars = SMap.empty } in
+  let dummy_env = { structs; funcs = SMap.empty; vars = [SMap.empty] } in
   List.fold_left
     (fun acc d ->
        match d with
@@ -457,7 +470,7 @@ let add_struct_fields (structs : struct_env) (decls : decl list) : struct_env =
                   failwith ("duplicate field " ^ x.id ^ " in struct " ^ sdef.sname.id)
                 else Hashtbl.add tmp x.id ();
                 (* type bien formé *)
-                let dummy_env = { structs = acc; funcs = SMap.empty; vars = SMap.empty } in
+                let dummy_env = { structs = acc; funcs = SMap.empty; vars = [SMap.empty] } in
                 check_type_bf dummy_loc dummy_env ty)
              sdef.fields;
            let sinfo' =
@@ -497,7 +510,7 @@ let type_program ((import_fmt, decls) : program) : unit =
   (* étape 2(b) : champs de structures *)
   let senv = add_struct_fields senv0 decls in
   (* environnement de base pour typer les corps de fonctions *)
-  let base_env = { structs = senv; funcs = fenv; vars = SMap.empty } in
+  let base_env = { structs = senv; funcs = fenv; vars = [SMap.empty] } in
 
   (* 3. vérifier chaque fonction *)
   List.iter

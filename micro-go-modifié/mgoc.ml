@@ -34,7 +34,7 @@ let () =
     let f = Mgoparser.prog Mgolexer.token lb in
     close_in c;
     if !parse_only then exit 0;
-    let f = Typechecker.prog  f in
+    ignore (Typechecker.prog f);
     if !type_only then exit 0;
 
   with

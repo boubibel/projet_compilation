@@ -142,28 +142,42 @@ let rec type_expr (env : tenv) (e : expr) : typ =
           type_error loc t1 TBool
       end
   | Binop (op, e1, e2) ->
-      let t1 = type_expr env e1 in
-      let t2 = type_expr env e2 in
       begin match op with
       | Eq | Neq ->
-          (* égalité sur types quelconques, mais pas nil == nil *)
+          (* Handle nil comparisons specially: infer type from the other operand *)
           begin match e1.edesc, e2.edesc with
           | Nil, Nil ->
               error loc "comparing nil with nil is not allowed"
+          | Nil, _ ->
+              let _ = type_expr env e2 in
+              (* nil takes the type of the other operand *)
+              TBool
+          | _, Nil ->
+              let _ = type_expr env e1 in
+              (* nil takes the type of the other operand *)
+              TBool
           | _ ->
+              let t1 = type_expr env e1 in
+              let t2 = type_expr env e2 in
               if t1 <> t2 then
                 type_error loc t2 t1;
               TBool
           end
       | Lt | Le | Gt | Ge ->
+          let t1 = type_expr env e1 in
+          let t2 = type_expr env e2 in
           if t1 <> TInt || t2 <> TInt then
             error loc "comparison requires int operands";
           TBool
       | Add | Sub | Mul | Div | Rem ->
+          let t1 = type_expr env e1 in
+          let t2 = type_expr env e2 in
           if t1 <> TInt || t2 <> TInt then
             error loc "arithmetic operator requires ints";
           TInt
       | And | Or ->
+          let t1 = type_expr env e1 in
+          let t2 = type_expr env e2 in
           if t1 <> TBool || t2 <> TBool then
             error loc "logical operator requires bool operands";
           TBool

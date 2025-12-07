@@ -8,14 +8,26 @@ let new_label =
 (* association variable id -> adresse dans la pile *)
 let var_stack = ref []
 
+(* collecte les chaînes de caractères du programme pour la zone de données *)
+let string_map = ref []
+let next_string_id = ref 0
+
 (* le résultat de l'expression est dans le registre $t0,
    la pile est utilisée pour les valeurs intermédiaires *)
 let rec tr_expr e = match e.edesc with
   | Int(n)  -> li t0 (Int64.to_int n)   (* on supposera que les constantes entières
                                            sont représentables sur 32 bits *)
-  | String(_) -> 
-      (* allocation d'une chaîne dans la zone de données statiques *)
-      let lbl = new_label() in
+  | String(s) -> 
+      (* Récupérer le label de la chaîne depuis string_map *)
+      let lbl = 
+        try List.assoc s !string_map
+        with Not_found -> 
+          (* Si pas trouvé (ne devrait pas arriver), créer un nouveau label *)
+          let new_lbl = Printf.sprintf "_str_%d" !next_string_id in
+          incr next_string_id;
+          string_map := (s, new_lbl) :: !string_map;
+          new_lbl
+      in
       la t0 lbl
   | Var(id) -> 
       (* charger la valeur de la variable depuis la pile *)
@@ -205,10 +217,6 @@ let rec tr_ldecl = function
   | _ :: p -> tr_ldecl p
   | [] -> nop
 
-(* collecte les chaînes de caractères du programme pour la zone de données *)
-let string_map = ref []
-let next_string_id = ref 0
-
 let collect_strings prog =
   string_map := [];
   next_string_id := 0;
@@ -220,6 +228,9 @@ let collect_strings prog =
         )
     | Binop(_, e1, e2) -> collect_expr e1; collect_expr e2
     | Unop(_, e) -> collect_expr e
+    | Print(exprs) -> List.iter collect_expr exprs
+    | Call(_, args) -> List.iter collect_expr args
+    | Dot(e, _) -> collect_expr e
     | _ -> ()
   in
   let rec collect_instr i = match i.idesc with
@@ -253,4 +264,6 @@ let tr_data () =
 
 let tr_prog p =
   collect_strings p;
-  { text = tr_ldecl (snd p) ; data = tr_data () }
+  (* Ajouter un saut initial vers main comme point d'entrée *)
+  let entry_point = jal "main" @@ li v0 10 @@ syscall in
+  { text = entry_point @@ tr_ldecl (snd p) ; data = tr_data () }

@@ -1,4 +1,7 @@
 .text
+  jal  main
+  li   $v0, 10
+  syscall
 main:
   li   $t0, 42
   move $a0, $t0

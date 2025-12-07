@@ -1,4 +1,7 @@
 .text
+  jal  main
+  li   $v0, 10
+  syscall
 main:
   addi $sp, $sp, -8
   li   $t0, 1
@@ -8,7 +11,7 @@ main:
   li   $t0, 2
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  lw   $t0, 0($sp)
+  lw   $t0, 4($sp)
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   add  $t0, $t0, $t1
@@ -16,13 +19,13 @@ main:
   li   $t0, 4
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  lw   $t0, 0($sp)
+  lw   $t0, 4($sp)
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   add  $t0, $t0, $t1
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  lw   $t0, 4($sp)
+  lw   $t0, 8($sp)
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   mul  $t0, $t0, $t1

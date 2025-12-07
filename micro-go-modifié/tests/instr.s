@@ -1,4 +1,7 @@
 .text
+  jal  main
+  li   $v0, 10
+  syscall
 main:
   addi $sp, $sp, -12
   li   $t0, 2

@@ -1,22 +1,25 @@
 .text
+  jal  main
+  li   $v0, 10
+  syscall
 main:
   move $a0, $t0
   li   $v0, 1
   syscall
-  la   $t0, _label_6
+  la   $t0, _str_0
   move $a0, $t0
   li   $v0, 1
   syscall
   move $a0, $t0
   li   $v0, 1
   syscall
-  la   $t0, _label_7
+  la   $t0, _str_0
   move $a0, $t0
   li   $v0, 1
   syscall
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  la   $t0, _label_8
+  la   $t0, _str_0
   move $a0, $t0
   li   $v0, 1
   syscall
@@ -24,7 +27,7 @@ main:
   move $a0, $t0
   li   $v0, 1
   syscall
-  la   $t0, _label_9
+  la   $t0, _str_0
   move $a0, $t0
   li   $v0, 1
   syscall
@@ -92,7 +95,7 @@ div1:
   li   $t0, 1
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  lw   $t0, 0($sp)
+  lw   $t0, 4($sp)
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   add  $t0, $t0, $t1
@@ -106,3 +109,6 @@ _label_0:
   jr   $ra
 _label_1:
 .data
+_str_0:
+  .asciiz "
+"

@@ -3,36 +3,34 @@ main:
   move $a0, $t0
   li   $v0, 1
   syscall
-  la   $t0, _label_9
+  la   $t0, _label_6
   move $a0, $t0
   li   $v0, 1
   syscall
   move $a0, $t0
   li   $v0, 1
   syscall
-  la   $t0, _label_8
+  la   $t0, _label_7
   move $a0, $t0
   li   $v0, 1
   syscall
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  addi $sp, $sp, 4
-  la   $t0, _label_7
+  la   $t0, _label_8
   move $a0, $t0
   li   $v0, 1
   syscall
-  # var r non trouvée
+  lw   $t0, 0($sp)
   move $a0, $t0
   li   $v0, 1
   syscall
-  la   $t0, _label_6
+  la   $t0, _label_9
   move $a0, $t0
   li   $v0, 1
   syscall
 div3:
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  addi $sp, $sp, 4
   b    _label_4
 _label_5:
   # var b non trouvée
@@ -52,14 +50,13 @@ _label_4:
   addi $sp, $sp, 4
   sge  $t0, $t0, $t1
   bnez $t0, _label_5
-  # var r non trouvée
+  lw   $t0, 0($sp)
   move $v0, $t0
   jr   $ra
 div2:
   addi $sp, $sp, -4
   li   $t0, 0
   sw   $t0, 0($sp)
-  addi $sp, $sp, 4
   b    _label_2
 _label_3:
   # var b non trouvée
@@ -79,7 +76,7 @@ _label_2:
   addi $sp, $sp, 4
   sge  $t0, $t0, $t1
   bnez $t0, _label_3
-  # var q non trouvée
+  lw   $t0, 0($sp)
   move $v0, $t0
   jr   $ra
 div1:
@@ -92,16 +89,16 @@ div1:
   slt  $t0, $t0, $t1
   bnez $t0, _label_0
   addi $sp, $sp, -8
-  addi $sp, $sp, 8
   li   $t0, 1
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  # var x non trouvée
+  lw   $t0, 0($sp)
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   add  $t0, $t0, $t1
   move $v0, $t0
   jr   $ra
+  addi $sp, $sp, 8
   b    _label_1
 _label_0:
   li   $t0, 0

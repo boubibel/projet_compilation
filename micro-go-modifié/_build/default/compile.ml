@@ -41,11 +41,19 @@ let rec tr_expr e = match e.edesc with
       | And -> and_
       | Or  -> (fun r1 r2 r3 -> S(Printf.sprintf "  or   %s, %s, %s" r1 r2 r3))
     in
-    tr_expr e2
-    @@ push t0
-    @@ tr_expr e1
-    @@ pop t1
-    @@ op t0 t0 t1
+    (* Évaluer e2 d'abord *)
+    let code_e2 = tr_expr e2 in
+    (* Pousser le résultat sur la pile *)
+    let code_push = push t0 in
+    (* Ajuster var_stack pour refléter le push (tous les offsets +4) *)
+    let old_stack = !var_stack in
+    var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
+    (* Évaluer e1 avec les offsets ajustés *)
+    let code_e1 = tr_expr e1 in
+    (* Restaurer var_stack *)
+    var_stack := old_stack;
+    (* Dépiler et calculer *)
+    code_e2 @@ code_push @@ code_e1 @@ pop t1 @@ op t0 t0 t1
   | Bool(b) -> li t0 (if b then 1 else 0)
   | Nil -> li t0 0  (* nil est représenté par 0 *)
   | Unop(op, e) ->
@@ -79,34 +87,62 @@ let rec tr_expr e = match e.edesc with
 let rec tr_seq = function
   | []   -> nop
   | [i]  -> tr_instr i
-  | i::s -> tr_instr i @@ tr_seq s
+  | i::s -> 
+      let code_i = tr_instr i in
+      let code_s = tr_seq s in
+      code_i @@ code_s
 
 and tr_instr i = match i.idesc with 
   | If(c, s1, s2) ->
+    let old_stack = !var_stack in
+    let old_stack_size = List.length old_stack in
     let then_label = new_label()
     and end_label = new_label()
     in
-    tr_expr c
-    @@ bnez t0 then_label
-    @@ tr_seq s2
+    let code_before = tr_expr c @@ bnez t0 then_label in
+    let code_s2 = tr_seq s2 in
+    let new_stack_size_s2 = List.length !var_stack in
+    let dealloc_s2 = (new_stack_size_s2 - old_stack_size) * 4 in
+    var_stack := old_stack;
+    let code_s1 = tr_seq s1 in
+    let new_stack_size_s1 = List.length !var_stack in
+    let dealloc_s1 = (new_stack_size_s1 - old_stack_size) * 4 in
+    var_stack := old_stack;
+    code_before
+    @@ code_s2
+    @@ (if dealloc_s2 > 0 then addi sp sp dealloc_s2 else nop)
     @@ b end_label
     @@ label then_label
-    @@ tr_seq s1
+    @@ code_s1
+    @@ (if dealloc_s1 > 0 then addi sp sp dealloc_s1 else nop)
     @@ label end_label
 
   | For(c, s) ->
+    let old_stack = !var_stack in
+    let old_stack_size = List.length old_stack in
     let test_label = new_label()
     and code_label = new_label()
     in
+    let code_body = tr_seq s in
+    let new_stack_size = List.length !var_stack in
+    let dealloc = (new_stack_size - old_stack_size) * 4 in
+    var_stack := old_stack;
     b test_label
     @@ label code_label
-    @@ tr_seq s
+    @@ code_body
+    @@ (if dealloc > 0 then addi sp sp dealloc else nop)
     @@ label test_label
     @@ tr_expr c
     @@ bnez t0 code_label
     
   | Block(s) ->
-    tr_seq s
+    let old_stack = !var_stack in
+    let old_stack_size = List.length old_stack in
+    let code = tr_seq s in
+    let new_stack_size = List.length !var_stack in
+    let dealloc = (new_stack_size - old_stack_size) * 4 in
+    var_stack := old_stack;
+    code @@ (if dealloc > 0 then addi sp sp dealloc else nop)
     
   | Set(lhs, rhs) ->
     (* Assignation : lhs := rhs *)
@@ -133,24 +169,17 @@ and tr_instr i = match i.idesc with
     
   | Vars(ids, _typ_opt, s) ->
     (* Déclaration de variables locales *)
-    let old_stack = !var_stack in
     let n = List.length ids in
     let total_size = n * 4 in
-    (* Calculer les offsets: après avoir décrémenté sp, les vars sont à des offsets positifs *)
-    let _ = List.fold_left (fun i id ->
-      let offset = i * 4 in  (* offset positif depuis le nouveau sp *)
-      var_stack := (id.id, offset) :: !var_stack;
-      i + 1
-    ) 0 ids in
-    (* allouer l'espace sur la pile *)
-    let alloc_code = addi sp sp (-total_size) in
-    (* exécuter le corps avec les variables déclarées *)
-    let body_code = tr_seq s in
-    (* désallouer *)
-    let dealloc_code = addi sp sp total_size in
-    (* restaurer l'environnement APRÈS avoir généré le code *)
-    var_stack := old_stack;
-    alloc_code @@ body_code @@ dealloc_code
+    (* Les nouvelles variables seront aux offsets 0, 4, 8, ... depuis le NOUVEAU sp *)
+    (* Les anciennes variables voient leur offset augmenté de total_size *)
+    var_stack := List.map (fun (name, off) -> (name, off + total_size)) !var_stack;
+    List.iteri (fun i id ->
+      var_stack := (id.id, i * 4) :: !var_stack
+    ) ids;
+    (* Générer : allocation + corps (PAS de désallocation) *)
+    addi sp sp (-total_size)
+    @@ tr_seq s
     
   | Return(exprs) ->
     (* Retour de fonction : mettre les valeurs dans $v0, etc. et jr $ra *)
@@ -167,8 +196,9 @@ and tr_instr i = match i.idesc with
 
 
 let tr_fun df =
-       label df.fname.id
-    @@ tr_seq df.body
+  var_stack := [];  (* Réinitialiser pour chaque fonction *)
+  label df.fname.id
+  @@ tr_seq df.body
 
 let rec tr_ldecl = function
     Fun df::p -> tr_fun df @@ tr_ldecl p

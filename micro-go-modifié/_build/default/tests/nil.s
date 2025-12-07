@@ -1,12 +1,11 @@
 .text
 main:
   addi $sp, $sp, -4
-  addi $sp, $sp, 4
-  # set: var p non trouvée
+  sw   $t0, 0($sp)
   li   $t0, 0
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  # var p non trouvée
+  lw   $t0, 0($sp)
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   seq  $t0, $t0, $t1

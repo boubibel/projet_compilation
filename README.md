@@ -1,7 +1,20 @@
-# Projet Compilation
+## Projet Compilation
+
+# Organisation du Travail
+
+Nous avons opté pour la création d'un github partagé pour faciliter le travail de par l'intégration de git à VSCode. Le README fait office de rapport.
+On y a détaillé les grandes étapes, ce que font les tests, et des problèmes rencontrés dans le développement du projet.
+
 
 ## Tests (10 ajoutés)
 
+# 
+Pour Tester la partie 1 : make test
+Pour la partie 2 :
+./test_mips.sh    pour une vue rapide
+./test_part2.sh   vue détaillée avec exemples
+
+#
 On a enlevé du make test les tests relevant une erreur pour permettre d'executer tous les tests qui passent, on vérifie les tests relevant une erreur un par un avec :
 /_build/default/mgoc.exe tests/nom.go
 
@@ -20,7 +33,7 @@ Point.go : Définition d'un type "point"
 Teste : types structurés, new(Type), accès et modification de champs, affichage d'expression sur champs.
 
 Neg_test.go : Déclaration récursive de types
-# renvoi une erreur car pas de main, bon comportement
+** renvoi une erreur car pas de main, bon comportement **
 
 Var.go : Calcul d'expressions à partir de plusieurs variables
 Teste : déclarations de variables, assignations, expressions composées

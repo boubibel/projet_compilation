@@ -8,6 +8,12 @@ let new_label =
 (* association variable id -> adresse dans la pile *)
 let var_stack = ref []
 
+(* nombre de paramètres de la fonction courante *)
+let n_params = ref 0
+
+(* vrai si la fonction courante est main *)
+let is_main_fun = ref false
+
 (* collecte les chaînes de caractères du programme pour la zone de données *)
 let string_map = ref []
 let next_string_id = ref 0
@@ -78,22 +84,52 @@ let rec tr_expr e = match e.edesc with
     (* Pour fmt.Print: appel système pour affichage *)
     (match exprs with
      | [e] ->
+         (* Détecter si c'est une string pour utiliser le bon syscall *)
+         let syscall_code = match e.edesc with
+           | String _ -> 4  (* syscall 4 = print_string *)
+           | _ -> 1         (* syscall 1 = print_int *)
+         in
          tr_expr e
          @@ move a0 t0
-         @@ li v0 1  (* syscall 1 = print_int *)
+         @@ li v0 syscall_code
          @@ syscall
-     | _ ->
-         (* Arguments multiples : simplification, on affiche le premier *)
-         nop)
-  | Call(_fname, _args) ->
-    (* Appel de fonction : à compléter *)
-    nop
+     | exprs ->
+         (* Arguments multiples : afficher chaque expression *)
+         List.fold_left (fun code e ->
+           let syscall_code = match e.edesc with
+             | String _ -> 4
+             | _ -> 1
+           in
+           code
+           @@ tr_expr e
+           @@ move a0 t0
+           @@ li v0 syscall_code
+           @@ syscall
+         ) nop exprs)
+  | Call(fname, args) ->
+    (* Appel de fonction : empiler les arguments puis appeler *)
+    (* 1. Évaluer et empiler les arguments dans l'ordre *)
+    let push_args =
+      List.fold_left (fun code arg ->
+        code @@ tr_expr arg @@ push t0
+      ) nop args
+    in
+    (* 2. Appeler la fonction *)
+    let call_code = jal fname.id in
+    (* 3. Nettoyer la pile (nombre d'arguments * 4) *)
+    let cleanup = 
+      let n = List.length args in
+      if n > 0 then addi sp sp (n * 4) else nop
+    in
+    (* 4. Récupérer le résultat de $v0 dans $t0 *)
+    push_args @@ call_code @@ cleanup @@ move t0 v0
   | Dot(_e, _field) ->
     (* Accès à un champ de structure : à compléter *)
-    nop
+    li t0 0
   | New(_typename) ->
     (* Allocation de structure : à compléter *)
-    nop
+    (* Pour l'instant, retourner une adresse non-nulle (pas une vraie allocation) *)
+    li t0 1  (* Simuler un pointeur non-nil *)
 
 
 let rec tr_seq = function
@@ -158,26 +194,81 @@ and tr_instr i = match i.idesc with
     
   | Set(lhs, rhs) ->
     (* Assignation : lhs := rhs *)
-    (* Pour simplifier, on supporte seulement l'assignation simple x := e *)
     (match lhs, rhs with
      | [{ edesc = Var(id); _ }], [e] ->
+         (* Assignation simple : x := e *)
          tr_expr e @@
          (try
            let addr = List.assoc id.id !var_stack in
            sw t0 addr sp
          with Not_found ->
            comment (Printf.sprintf "set: var %s non trouvée" id.id))
+     | vars, exprs when List.length vars = List.length exprs && List.length vars > 1 ->
+         (* Assignation multiple : x, y := a, b *)
+         let n = List.length vars in
+         let old_stack = !var_stack in
+         (* 1. Évaluer toutes les expressions et les pousser sur la pile *)
+         (* Ajuster var_stack pour chaque push *)
+         let rec push_exprs_with_adjust exprs_list =
+           match exprs_list with
+           | [] -> nop
+           | e :: rest ->
+               let code_e = tr_expr e in
+               let code_push = push t0 in
+               (* Ajuster var_stack après le push *)
+               var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
+               code_e @@ code_push @@ push_exprs_with_adjust rest
+         in
+         let push_code = push_exprs_with_adjust exprs in
+         (* 2. Assigner depuis la pile vers les variables *)
+         (* Les valeurs sont sur la pile à offsets 0, 4, 8, ... (en ordre inverse des vars) *)
+         let rec assign_vars vars_list offset =
+           match vars_list with
+           | [] -> nop
+           | { edesc = Var(id); _ } :: rest ->
+               (try
+                 let addr = List.assoc id.id !var_stack in
+                 lw t0 offset sp @@ sw t0 addr sp @@ assign_vars rest (offset + 4)
+               with Not_found ->
+                 comment (Printf.sprintf "set: var %s non trouvée" id.id) @@ assign_vars rest (offset + 4))
+           | _ :: rest ->
+               assign_vars rest (offset + 4)
+         in
+         let assign_code = assign_vars (List.rev vars) 0 in
+         (* Restaurer var_stack puis nettoyer la pile *)
+         var_stack := old_stack;
+         push_code @@ assign_code @@ addi sp sp (4 * n)
      | _ ->
-         (* Assignations multiples ou complexes non supportées *)
+         (* Assignations complexes non supportées *)
          nop)
     
-  | Inc(_e) ->
+  | Inc(e) ->
     (* Incrémenter : e++ *)
-    nop  (* À compléter: implémentation de Inc *)
+    (* Seules les variables sont supportées pour Inc *)
+    (match e.edesc with
+     | Var(id) ->
+         (try
+           let offset = List.assoc id.id !var_stack in
+           lw t0 offset sp
+           @@ addi t0 t0 1
+           @@ sw t0 offset sp
+         with Not_found ->
+           comment (Printf.sprintf "Inc: var %s non trouvée" id.id))
+     | _ -> comment "Inc: expression non supportée")
     
-  | Dec(_e) ->
+  | Dec(e) ->
     (* Décrémenter : e-- *)
-    nop  (* À compléter: implémentation de Dec *)
+    (* Seules les variables sont supportées pour Dec *)
+    (match e.edesc with
+     | Var(id) ->
+         (try
+           let offset = List.assoc id.id !var_stack in
+           lw t0 offset sp
+           @@ addi t0 t0 (-1)
+           @@ sw t0 offset sp
+         with Not_found ->
+           comment (Printf.sprintf "Dec: var %s non trouvée" id.id))
+     | _ -> comment "Dec: expression non supportée")
     
   | Vars(ids, _typ_opt, s) ->
     (* Déclaration de variables locales *)
@@ -195,12 +286,24 @@ and tr_instr i = match i.idesc with
     
   | Return(exprs) ->
     (* Retour de fonction : mettre les valeurs dans $v0, etc. et jr $ra *)
+    (* D'abord calculer combien de variables locales nettoyer *)
+    let locals_size = (List.length !var_stack - !n_params) * 4 in
+    let cleanup = 
+      if !is_main_fun then
+        if locals_size > 0 then addi sp sp locals_size else nop
+      else
+        (* Fonction non-main : toujours restaurer $ra *)
+        if locals_size > 0 then
+          addi sp sp locals_size @@ pop ra
+        else
+          pop ra
+    in
     (match exprs with
-     | [] -> jr ra
-     | [e] -> tr_expr e @@ move v0 t0 @@ jr ra
+     | [] -> cleanup @@ jr ra
+     | [e] -> tr_expr e @@ move v0 t0 @@ cleanup @@ jr ra
      | e :: _rest -> 
          (* Retours multiples : pas supporté pour l'instant *)
-         tr_expr e @@ move v0 t0 @@ jr ra)
+         tr_expr e @@ move v0 t0 @@ cleanup @@ jr ra)
     
   | Expr(e) ->
     (* Expression utilisée comme instruction *)
@@ -209,8 +312,54 @@ and tr_instr i = match i.idesc with
 
 let tr_fun df =
   var_stack := [];  (* Réinitialiser pour chaque fonction *)
+  let np = List.length df.params in
+  n_params := np;
+  
+  (* Vérifier si c'est main (pas besoin de sauvegarder $ra) *)
+  let is_main = df.fname.id = "main" in
+  is_main_fun := is_main;
+  
+  (* Les paramètres restent sur la pile où ils ont été empilés *)
+  (* Pour div2(a, b) appelé avec push(45), push(6) : *)
+  (*   - 0($sp) = b (dernier empilé) *)
+  (*   - 4($sp) = a (premier empilé) *)
+  (* On les ajoute à var_stack avec leurs offsets *)
+  let rec add_params params idx =
+    match params with
+    | [] -> ()
+    | (id, _typ) :: rest ->
+        let offset = (np - 1 - idx) * 4 in
+        var_stack := (id.id, offset) :: !var_stack;
+        add_params rest (idx + 1)
+  in
+  add_params df.params 0;
+  
+  (* Sauvegarder $ra au début (sauf pour main) *)
+  let save_ra = if is_main then nop else push ra in
+  (* Si on sauvegarde $ra, ajuster les offsets des paramètres *)
+  if not is_main then
+    var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
+  
+  (* Ajouter un return implicite à la fin si la fonction ne retourne pas *)
+  let implicit_return =
+    let locals_size = (List.length !var_stack - np) * 4 in
+    if is_main then
+      if locals_size > 0 then
+        addi sp sp locals_size @@ jr ra
+      else
+        jr ra
+    else
+      (* Fonction non-main : toujours restaurer $ra *)
+      if locals_size > 0 then
+        addi sp sp locals_size @@ pop ra @@ jr ra
+      else
+        pop ra @@ jr ra
+  in
+  
   label df.fname.id
+  @@ save_ra
   @@ tr_seq df.body
+  @@ implicit_return
 
 let rec tr_ldecl = function
     Fun df::p -> tr_fun df @@ tr_ldecl p
@@ -265,5 +414,9 @@ let tr_data () =
 let tr_prog p =
   collect_strings p;
   (* Ajouter un saut initial vers main comme point d'entrée *)
-  let entry_point = jal "main" @@ li v0 10 @@ syscall in
+  let entry_point = 
+    jal "main" 
+    @@ li v0 10 
+    @@ syscall 
+  in
   { text = entry_point @@ tr_ldecl (snd p) ; data = tr_data () }

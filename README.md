@@ -1,5 +1,100 @@
 # Projet Compilation
 
+## Tests (10 ajoutés)
+
+On a enlevé du make test les tests relevant une erreur pour permettre d'executer tous les tests qui passent, on vérifie les tests relevant une erreur un par un avec :
+/_build/default/mgoc.exe tests/nom.go
+
+Arith.go : calcul arithmétique
+Teste : priorités d'associativité entre les opérations
+
+Div.go : 3 variantes de divisions entières (itérative, récursive, renvoyant un pointeur vers une structure).
+Teste : fonctions avec retours multiples, récursion, boucle for et modifications d'arguments, structures, pointeurs, accès aux champs et impression des valeurs retournées.
+
+Instr.go : Exponentiation Rapide
+Teste : For, réassignation de variables, modulo
+
+Min.go : imprime 42
+
+Point.go : Définition d'un type "point"
+Teste : types structurés, new(Type), accès et modification de champs, affichage d'expression sur champs.
+
+Neg_test.go : Déclaration récursive de types
+# renvoi une erreur car pas de main, bon comportement
+
+Var.go : Calcul d'expressions à partir de plusieurs variables
+Teste : déclarations de variables, assignations, expressions composées
+
+Multi_return_assign.go : Affectation multiple depuis une fonction
+
+Shadowing.go : Masquage de variables
+
+For_icp.go : instr.go utilise la forme for (cond) {}, mais la forme avec init/cond/post n'est pas testée 
+Teste : for (init; cond; post)
+
+Neg_type_mismatch.go : Teste passage d'argument avec type incorrect
+# renvoi une erreur car int != string, bon comportement
+
+Neg_return_assign_func : Teste l'affectation à une variable de l'appel d'une fonction qui renvoie 2 variabels
+# renvoi une erreur car différences de type à l'assignation, bon comportement
+
+Nil.go : Vérifier que nil est bien pris en charge
+Teste : comparaison pointeur avec nil
+
+Logic_op : Teste de && et que le if est bien paresseux (n'évalue pas la 2eme condition du &&
+quand la première est fausse)
+
+Struct_assign.go : Assignation de variable et accès à une structure
+
+Neg_assign_var.go : Déclare 2 fois une variable avec le même nom
+# renvoi une erreur x already defined, bon comportement
+
+Multiple_assign.go : Teste assignations multiples
+
+
+## Commandes :
+- Executer fichier de test : go run tests/nom.go
+
+
+
+
+## Problèmes rencontrés :
+
+# Teste de masquage dans shadowing.go :
+
+Problème : une déclaration intérieure x := ... dans un bloc était rejetée par le compilateur (erreur « variable x already defined »).
+Cause : le typechecker utilisait une seule table globale de variables; toute nouvelle declaration était comparée à l'ensemble global, empêchant le masquage lexical.
+Ainsi, tests/shadowing.go ne passait pas alors que le code était valide en Micro‑Go attendu.
+Solution : remplacer la table globale par une pile de tables (liste de maps) dans typechecker.ml.
+Détail : add_var n’ajoute plus que dans la portée courante (top de la pile); find_var cherche du sommet vers la base.
+Portée : on pousse une nouvelle table (scope) avant de typer les Block, les branches If et les corps For, et on la pop après vérification.
+Résultat : les déclarations locales peuvent masquer des noms externes sans erreur, et les variables externes restent accessibles hors de la portée et shadowing.go passe les tests de typage.
+
+# Problème : typage de nil dans les comparaisons
+
+Test nil.go contenait if (p == nil) où p est de type *T.
+Le typechecker original appelait type_expr sur les deux opérandes avant de vérifier s'il s'agissait d'une comparaison avec nil.
+Quand type_expr rencontrait Nil, il levait immédiatement l'erreur "cannot infer type of nil here" — car nil n'a pas de type intrinsèque.
+Résultat, impossible de compiler p == nil ou nil == p.
+Solution : gestion spéciale de nil dans les comparaisons Eq/Neq
+
+Modifié le cas Binop (Eq | Neq, e1, e2) dans typechecker.ml pour inspecter e1.edesc et e2.edesc avant de typer les expressions.
+Ajout de trois branches :
+Nil, Nil → erreur (interdit par spécification).
+Nil, _ → on type seulement e2 et on accepte (nil prend le type de e2).
+_, Nil → on type seulement e1 et on accepte (nil prend le type de e1).
+Sinon → comportement normal (typage des deux, vérif d'égalité de types).
+Pour les autres opérateurs (Lt, Add, And, etc.), on continue de typer e1 et e2 normalement (nil ne peut pas apparaître dans ces contextes).
+Résultat : p == nil et nil == p passent maintenant la vérification de types et le test nil.go compile.
+
+
+
+## Implémentation du ; automatique
+
+
+
+## Grandes étapes : 
+
 
 1. mgolexer.mll (Lexer)
 Objectif: Éliminer l'ambiguïté entre une simple expression ident et une déclaration avec := (ex: x,y := ...).
@@ -10,7 +105,7 @@ Objectif: Supprimer les conflits shift/reduce et reduce/reduce en restructurant 
 
 
 
-# Grandes étapes des transformations du Typechecker
+# Typechecker
 
 
 1. Restructuration des environnements de typage

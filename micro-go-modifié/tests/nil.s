@@ -2,11 +2,11 @@
 main:
   addi $sp, $sp, -4
   addi $sp, $sp, 4
-  # set: var p not found
+  # set: var p non trouvée
   li   $t0, 0
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  # var p not found
+  # var p non trouvée
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   seq  $t0, $t0, $t1

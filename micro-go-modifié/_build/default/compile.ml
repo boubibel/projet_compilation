@@ -24,7 +24,7 @@ let rec tr_expr e = match e.edesc with
         lw t0 addr sp
       with Not_found ->
         (* variable non trouvée dans la pile *)
-        comment (Printf.sprintf "var %s not found" id.id))
+        comment (Printf.sprintf "var %s non trouvée" id.id))
   | Binop(bop, e1, e2) ->
     let op = match bop with
       | Add -> add
@@ -47,7 +47,7 @@ let rec tr_expr e = match e.edesc with
     @@ pop t1
     @@ op t0 t0 t1
   | Bool(b) -> li t0 (if b then 1 else 0)
-  | Nil -> li t0 0  (* nil is represented as 0 *)
+  | Nil -> li t0 0  (* nil est représenté par 0 *)
   | Unop(op, e) ->
     let instr = match op with
       | Opp -> (fun r -> S(Printf.sprintf "  neg  %s, %s" r r))
@@ -63,7 +63,7 @@ let rec tr_expr e = match e.edesc with
          @@ li v0 1  (* syscall 1 = print_int *)
          @@ syscall
      | _ ->
-         (* Multiple arguments : simplification, on affiche le premier *)
+         (* Arguments multiples : simplification, on affiche le premier *)
          nop)
   | Call(_fname, _args) ->
     (* Appel de fonction : à compléter *)
@@ -118,7 +118,7 @@ and tr_instr i = match i.idesc with
            let addr = List.assoc id.id !var_stack in
            sw t0 addr sp
          with Not_found ->
-           comment (Printf.sprintf "set: var %s not found" id.id))
+           comment (Printf.sprintf "set: var %s non trouvée" id.id))
      | _ ->
          (* Assignations multiples ou complexes non supportées *)
          nop)
@@ -158,7 +158,7 @@ and tr_instr i = match i.idesc with
      | [] -> jr ra
      | [e] -> tr_expr e @@ move v0 t0 @@ jr ra
      | e :: _rest -> 
-         (* Multiple return : pas supporté pour l'instant *)
+         (* Retours multiples : pas supporté pour l'instant *)
          tr_expr e @@ move v0 t0 @@ jr ra)
     
   | Expr(e) ->

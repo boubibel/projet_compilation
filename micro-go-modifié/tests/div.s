@@ -21,7 +21,7 @@ main:
   move $a0, $t0
   li   $v0, 1
   syscall
-  # var r not found
+  # var r non trouvée
   move $a0, $t0
   li   $v0, 1
   syscall
@@ -35,24 +35,24 @@ div3:
   addi $sp, $sp, 4
   b    _label_4
 _label_5:
-  # var b not found
+  # var b non trouvée
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  # var a not found
+  # var a non trouvée
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   sub  $t0, $t0, $t1
-  # set: var a not found
+  # set: var a non trouvée
 _label_4:
-  # var b not found
+  # var b non trouvée
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  # var a not found
+  # var a non trouvée
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   sge  $t0, $t0, $t1
   bnez $t0, _label_5
-  # var r not found
+  # var r non trouvée
   move $v0, $t0
   jr   $ra
 div2:
@@ -62,31 +62,31 @@ div2:
   addi $sp, $sp, 4
   b    _label_2
 _label_3:
-  # var b not found
+  # var b non trouvée
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  # var a not found
+  # var a non trouvée
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   sub  $t0, $t0, $t1
-  # set: var a not found
+  # set: var a non trouvée
 _label_2:
-  # var b not found
+  # var b non trouvée
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  # var a not found
+  # var a non trouvée
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   sge  $t0, $t0, $t1
   bnez $t0, _label_3
-  # var q not found
+  # var q non trouvée
   move $v0, $t0
   jr   $ra
 div1:
-  # var b not found
+  # var b non trouvée
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  # var a not found
+  # var a non trouvée
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   slt  $t0, $t0, $t1
@@ -96,7 +96,7 @@ div1:
   li   $t0, 1
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
-  # var x not found
+  # var x non trouvée
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   add  $t0, $t0, $t1

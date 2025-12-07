@@ -40,11 +40,11 @@
     try
       let n = Int64.of_string s in
       if n < 0L || n > Int64.max_int then
-        raise (Error ("integer literal out of range: " ^ s))
+        raise (Error ("littéral entier hors limites : " ^ s))
       else
         n
     with Failure _ ->
-      raise (Error ("invalid integer literal: " ^ s))
+      raise (Error ("littéral entier invalide : " ^ s))
 
   (* Buffer utilisé pour construire les chaînes de caractères *)
   let str_buf = Buffer.create 128
@@ -135,7 +135,7 @@ rule token = parse
   | eof                   { set_last EOF }
 
   (* Caractère inconnu *)
-  | _                     { raise (Error ("unknown character: " ^ Lexing.lexeme lexbuf)) }
+  | _                     { raise (Error ("caractère inconnu : " ^ Lexing.lexeme lexbuf)) }
 
 (* Commentaire multi-ligne C-like : /* ... */  *)
 and comment = parse
@@ -145,7 +145,7 @@ and comment = parse
                               (last_was_semicolon_candidate := false; SEMI)
                             else
                               comment lexbuf }
-  | eof                   { raise (Error "unterminated comment") }
+  | eof                   { raise (Error "commentaire non terminé") }
   | _                     { comment lexbuf }
 
 (* Commentaire ligne : // ... \n *)
@@ -167,8 +167,8 @@ and string = parse
   | "\\\""                { Buffer.add_char str_buf '\"'; string lexbuf }
   | "\\\\"                { Buffer.add_char str_buf '\\'; string lexbuf }
 
-  | '\n'                  { raise (Error "unterminated string literal") }
-  | eof                   { raise (Error "unterminated string literal") }
+  | '\n'                  { raise (Error "littéral chaîne non terminé") }
+  | eof                   { raise (Error "littéral chaîne non terminé") }
 
   (* Tout autre caractère « normal » (ASCII 32..126 hors guillemets et \) *)
   | _                     { Buffer.add_string str_buf (Lexing.lexeme lexbuf);

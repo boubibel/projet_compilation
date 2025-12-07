@@ -41,11 +41,11 @@
     try
       let n = Int64.of_string s in
       if n < 0L || n > Int64.max_int then
-        raise (Error ("integer literal out of range: " ^ s))
+        raise (Error ("littéral entier hors limites : " ^ s))
       else
         n
     with Failure _ ->
-      raise (Error ("invalid integer literal: " ^ s))
+      raise (Error ("littéral entier invalide : " ^ s))
 
   (* Buffer utilisé pour construire les chaînes de caractères *)
   let str_buf = Buffer.create 128
@@ -503,7 +503,7 @@ let
 
   | 33 ->
 # 138 "mgolexer.mll"
-                          ( raise (Error ("unknown character: " ^ Lexing.lexeme lexbuf)) )
+                          ( raise (Error ("caractère inconnu : " ^ Lexing.lexeme lexbuf)) )
 # 508 "mgolexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
@@ -529,7 +529,7 @@ and __ocaml_lex_comment_rec lexbuf __ocaml_lex_state =
 
   | 2 ->
 # 148 "mgolexer.mll"
-                          ( raise (Error "unterminated comment") )
+                          ( raise (Error "commentaire non terminé") )
 # 534 "mgolexer.ml"
 
   | 3 ->
@@ -597,12 +597,12 @@ and __ocaml_lex_string_rec lexbuf __ocaml_lex_state =
 
   | 5 ->
 # 170 "mgolexer.mll"
-                          ( raise (Error "unterminated string literal") )
+                          ( raise (Error "littéral chaîne non terminé") )
 # 602 "mgolexer.ml"
 
   | 6 ->
 # 171 "mgolexer.mll"
-                          ( raise (Error "unterminated string literal") )
+                          ( raise (Error "littéral chaîne non terminé") )
 # 607 "mgolexer.ml"
 
   | 7 ->

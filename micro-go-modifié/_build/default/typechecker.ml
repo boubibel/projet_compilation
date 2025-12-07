@@ -7,7 +7,7 @@ let error loc msg = raise (Error (loc, msg))
 
 let type_error loc ty_actual ty_expected =
   error loc
-    (Printf.sprintf "expected %s, got %s"
+    (Printf.sprintf "attendu %s, obtenu %s"
        (typ_to_string ty_expected)
        (typ_to_string ty_actual))
 
@@ -53,7 +53,7 @@ let add_var loc (x : ident) ty (env : tenv) : tenv =
         { env with vars = top :: [] }
     | top :: rest ->
         if SMap.mem x.id top then
-          error loc (Printf.sprintf "variable %s already defined" x.id)
+          error loc (Printf.sprintf "variable %s déjà définie" x.id)
         else
           let top' = SMap.add x.id ty top in
           { env with vars = top' :: rest }
@@ -113,7 +113,7 @@ let rec type_expr (env : tenv) (e : expr) : typ =
   | Nil ->
       (* on ne donne pas de type à nil ici : il sera contrôlé dans les contextes
          où il apparaît (assignation, comparaison, etc.) *)
-      error loc "cannot infer type of nil here"
+      error loc "impossible d'inférer le type de nil ici"
   | Var x ->
       if x.id = "_" then
         error loc "_ cannot appear in expressions";
@@ -144,17 +144,17 @@ let rec type_expr (env : tenv) (e : expr) : typ =
   | Binop (op, e1, e2) ->
       begin match op with
       | Eq | Neq ->
-          (* Handle nil comparisons specially: infer type from the other operand *)
+          (* Gérer les comparaisons avec nil spécialement : inférer le type depuis l'autre opérande *)
           begin match e1.edesc, e2.edesc with
           | Nil, Nil ->
               error loc "comparing nil with nil is not allowed"
           | Nil, _ ->
               let _ = type_expr env e2 in
-              (* nil takes the type of the other operand *)
+              (* nil prend le type de l'autre opérande *)
               TBool
           | _, Nil ->
               let _ = type_expr env e1 in
-              (* nil takes the type of the other operand *)
+              (* nil prend le type de l'autre opérande *)
               TBool
           | _ ->
               let t1 = type_expr env e1 in
@@ -206,14 +206,14 @@ let rec type_expr (env : tenv) (e : expr) : typ =
                f.id)
       | _ ->
           error loc
-            "function returns multiple values; cannot be used as a single expression"
+            "fonction retourne plusieurs valeurs ; ne peut pas être utilisée comme expression unique"
       end
   | Print es ->
-      (* Special-case: allow a Call that returns multiple values to appear as an
-         argument to Print: we check the call's argument types against the
-         function signature but we do not require the function to return a
-         single value. For other expression forms we fall back to normal
-         type checking. *)
+      (* Cas spécial : autoriser un Call qui retourne plusieurs valeurs à apparaître comme
+         argument de Print : on vérifie les types des arguments de l'appel contre la
+         signature de fonction mais on n'exige pas que la fonction retourne une
+         seule valeur. Pour les autres formes d'expression, on revient à la
+         vérification de type normale. *)
       List.iter
         (fun e ->
            match e.edesc with
@@ -235,7 +235,7 @@ let rec type_expr (env : tenv) (e : expr) : typ =
            | _ -> ignore (type_expr env e))
         es;
       TInt
-  (* Note: printing handled above; no additional Print case needed here. *)
+  (* Note : impression gérée ci-dessus ; pas de cas Print supplémentaire nécessaire ici. *)
       
 (*------------------------------------------------------------------*)
 (* Valeurs gauches Γ ⊢l e : τ                                       *)
@@ -292,8 +292,8 @@ and check_instr (env : tenv) (ret : typ list) (i : instr) : tenv =
         | _ when List.length rhs = List.length tl ->
             List.map (type_expr env) rhs
         | [e] ->
-            (* single expression on the right: could be a call returning
-               multiple values, in which case use the function's result types *)
+            (* expression unique à droite : peut être un appel retournant
+               plusieurs valeurs, auquel cas utiliser les types de résultat de la fonction *)
             begin match e.edesc with
             | Call (f, args) ->
                 let fsig = find_func e.eloc f.id env in
@@ -314,10 +314,10 @@ and check_instr (env : tenv) (ret : typ list) (i : instr) : tenv =
             | _ ->
                 List.map (type_expr env) rhs
             end
-        | _ -> error loc "mismatch number of values in assignment"
+        | _ -> error loc "nombre de valeurs incorrect dans l'assignation"
       in
       if List.length tl <> List.length tr then
-        error loc "mismatch number of values in assignment";
+        error loc "nombre de valeurs incorrect dans l'assignation";
       List.iter2
         (fun ty_l ty_r ->
            if ty_l <> ty_r then
@@ -347,13 +347,13 @@ and check_instr (env : tenv) (ret : typ list) (i : instr) : tenv =
   | Vars (ids, opt_ty, init_seq) ->
       (* cas var x,y [ty] [= ...]  *)
       let env_struct_fun = env in
-      (* Determine the types for the declared identifiers. Several forms
-         are possible:
-         - explicit type provided: all ids have that type
-         - initializer with same number of rhs expressions as ids: infer
-           each variable's type from the corresponding rhs expression
-         - single rhs which is a Call returning multiple values: use the
-           function's result types (must match number of ids)
+      (* Déterminer les types pour les identificateurs déclarés. Plusieurs formes
+         sont possibles :
+         - type explicite fourni : tous les ids ont ce type
+         - initialisateur avec même nombre d'expressions rhs que d'ids : inférer
+           le type de chaque variable depuis l'expression rhs correspondante
+         - rhs unique qui est un Call retournant plusieurs valeurs : utiliser les
+           types de résultat de la fonction (doit correspondre au nombre d'ids)
       *)
       let types_to_add : typ list =
         match opt_ty with
@@ -368,11 +368,11 @@ and check_instr (env : tenv) (ret : typ list) (i : instr) : tenv =
                 | _ when List.length rhs = List.length ids ->
                     List.map (fun e -> type_expr env e) rhs
                 | [e1] ->
-                    (* single rhs: must be a call returning multiple values *)
+                    (* rhs unique : doit être un appel retournant plusieurs valeurs *)
                     begin match e1.edesc with
                     | Call (f, args) ->
                         let fsig = find_func e1.eloc f.id env in
-                        (* check call args types *)
+                        (* vérifier les types des arguments de l'appel *)
                         let nparams = List.length fsig.params in
                         let nargs = List.length args in
                         if nparams <> nargs then
@@ -388,13 +388,13 @@ and check_instr (env : tenv) (ret : typ list) (i : instr) : tenv =
                           args fsig.params;
                         let res_types = fsig.results in
                         if List.length res_types <> List.length ids then
-                          error loc "initializer returns wrong number of values";
+                          error loc "l'initialisateur retourne un nombre incorrect de valeurs";
                         res_types
-                    | _ -> error loc "cannot infer type without initializer"
+                    | _ -> error loc "impossible d'inférer le type sans initialisateur"
                     end
-                | _ -> error loc "cannot infer type without initializer"
+                | _ -> error loc "impossible d'inférer le type sans initialisateur"
                 end
-            | _ -> error loc "cannot infer type without initializer"
+            | _ -> error loc "impossible d'inférer le type sans initialisateur"
             end
       in
       (* ajout des variables dans l'environnement *)
@@ -416,7 +416,7 @@ and check_instr (env : tenv) (ret : typ list) (i : instr) : tenv =
       let ne   = List.length elist in
       if nret <> ne then
         error loc
-          (Printf.sprintf "function returns %d values, got %d" nret ne);
+          (Printf.sprintf "fonction retourne %d valeurs, obtenu %d" nret ne);
       List.iter2
         (fun e ty_exp ->
            let ty = type_expr env e in
@@ -435,7 +435,7 @@ let build_struct_env (decls : decl list) : struct_env =
        match d with
        | Struct sdef ->
            if SMap.mem sdef.sname.id acc then
-             failwith ("duplicate struct " ^ sdef.sname.id);
+             failwith ("structure dupliquée " ^ sdef.sname.id);
            SMap.add sdef.sname.id SMap.empty acc
        | _ -> acc)
     SMap.empty decls
@@ -448,13 +448,13 @@ let build_func_env (structs : struct_env) (decls : decl list) : func_env =
        match d with
        | Fun fdef ->
            if SMap.mem fdef.fname.id acc then
-             failwith ("duplicate function " ^ fdef.fname.id);
+             failwith ("fonction dupliquée " ^ fdef.fname.id);
            (* vérif types bien formés et params distincts *)
            let seen = Hashtbl.create 16 in
            List.iter
              (fun (x, ty) ->
                 if Hashtbl.mem seen x.id then
-                  failwith ("duplicate parameter " ^ x.id)
+                  failwith ("paramètre dupliqué " ^ x.id)
                 else Hashtbl.add seen x.id ();
                 check_type_bf dummy_loc dummy_env ty)
              fdef.params;
@@ -481,7 +481,7 @@ let add_struct_fields (structs : struct_env) (decls : decl list) : struct_env =
            List.iter
              (fun (x, ty) ->
                 if Hashtbl.mem tmp x.id then
-                  failwith ("duplicate field " ^ x.id ^ " in struct " ^ sdef.sname.id)
+                  failwith ("champ dupliqué " ^ x.id ^ " dans la structure " ^ sdef.sname.id)
                 else Hashtbl.add tmp x.id ();
                 (* type bien formé *)
                 let dummy_env = { structs = acc; funcs = SMap.empty; vars = [SMap.empty] } in
@@ -539,9 +539,9 @@ let type_program ((import_fmt, decls) : program) : program =
     try
       let fsig = SMap.find "main" fenv in
       if fsig.params <> [] || fsig.results <> [] then
-        failwith "main must have no parameters and no return type"
+        failwith "main ne doit avoir aucun paramètre ni type de retour"
     with Not_found ->
-      failwith "no main function defined"
+      failwith "aucune fonction main définie"
   end;
   (import_fmt, decls) (* ici on renvoie le programme initial, mais on peut aussi appliquer des transformations en vue de la compilation *)
 

@@ -48,7 +48,7 @@ val xv_structure : Mgoast.struct_def
 val xv_return_list : Mgoast.expr list
 val xv_ret_type_list : Mgoast.typ list
 val xv_prog : Mgoast.program
-val xv_primary : Mgoast.expr
+val xv_primaire : Mgoast.expr
 val xv_postfix_suffix : Mgoast.expr -> Mgoast.expr
 val xv_postfix : Mgoast.expr
 val xv_param_list : (Mgoast.ident * Mgoast.typ) list
@@ -57,19 +57,19 @@ val xv_opt_var_init : Mgoast.expr list
 val xv_opt_type_ret : Mgoast.typ list
 val xv_opt_semi : unit
 val xv_opt_params : (Mgoast.ident * Mgoast.typ) list
-val xv_opt_field_decls : (Mgoast.ident * Mgoast.typ) list
+val xv_liste_ident : Mgoast.ident list
 val xv_instrs : Mgoast.seq
 val xv_instr_simple : Mgoast.instr_desc
 val xv_instr : Mgoast.instr
-val xv_ident_list : Mgoast.ident list
 val xv_ident : Mgoast.ident
 val xv_fonction : Mgoast.func_def
-val xv_field_decls : (Mgoast.ident * Mgoast.typ) list
 val xv_field_decl : (Mgoast.ident * Mgoast.typ) list
 val xv_expr_list : Mgoast.expr list
 val xv_expr : Mgoast.expr
 val xv_decls : Mgoast.decl list
+val xv_declaration : (Mgoast.ident * Mgoast.typ) list
 val xv_decl : Mgoast.decl
+val xv_champs : (Mgoast.ident * Mgoast.typ) list
 val xv_call_args : Mgoast.expr list
 val xv_bloc : Mgoast.seq
 val menhir_end_marker : int

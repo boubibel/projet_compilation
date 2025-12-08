@@ -5,81 +5,56 @@ let new_label =
   let cpt = ref (-1) in
   fun () -> incr cpt; Printf.sprintf "_label_%i" !cpt
 
-(* association variable id -> adresse dans la pile *)
 let var_stack = ref []
 
-(* table des types de variables : nom -> typ *)
 let var_types : (string * typ) list ref = ref []
 
-(* nombre de paramètres de la fonction courante *)
 let n_params = ref 0
 
-(* vrai si la fonction courante est main *)
 let is_main_fun = ref false
 
-(* collecte les chaînes de caractères du programme pour la zone de données *)
 let string_map = ref []
 let next_string_id = ref 0
 
-(* collecte les définitions de structures : nom -> liste de champs *)
 let struct_defs = ref []
 
-(* table des fonctions : nom -> nombre de valeurs de retour *)
 let func_table = Hashtbl.create 16
 
-(* le résultat de l'expression est dans le registre $t0,
-   la pile est utilisée pour les valeurs intermédiaires *)
 let rec tr_expr e = match e.edesc with
-  | Int(n)  -> li t0 (Int64.to_int n)   (* on supposera que les constantes entières
-                                           sont représentables sur 32 bits *)
-  | String(s) -> 
-      (* Récupérer le label de la chaîne depuis string_map *)
-      let lbl = 
-        try List.assoc s !string_map
-        with Not_found -> 
-          (* Si pas trouvé (ne devrait pas arriver), créer un nouveau label *)
-          let new_lbl = Printf.sprintf "_str_%d" !next_string_id in
+  | Int(n)  -> li t0 (Int64.to_int n)
+  | String(s) ->  let lbl =  try List.assoc s !string_map
+        with Not_found ->  let new_lbl = Printf.sprintf "_str_%d" !next_string_id in
           incr next_string_id;
           string_map := (s, new_lbl) :: !string_map;
           new_lbl
       in
       la t0 lbl
-  | Var(id) -> 
-      (* charger la valeur de la variable depuis la pile *)
-      (try
+  | Var(id) ->  (try
         let addr = List.assoc id.id !var_stack in
         lw t0 addr sp
-      with Not_found ->
-        (* variable non trouvée dans la pile *)
-        comment (Printf.sprintf "var %s non trouvée" id.id))
-  | Binop(bop, e1, e2) ->
-    (* Court-circuit pour && et || *)
-    (match bop with
-    | And ->
-        (* e1 && e2 : évaluer e1, si faux (0) alors résultat=0, sinon évaluer e2 *)
+      with Not_found -> comment (Printf.sprintf "var %s non trouvée" id.id))
+  | Binop(bop, e1, e2) -> (match bop with
+    | And -> 
         let label_false = new_label () in
         let label_end = new_label () in
         tr_expr e1
-        @@ beqz t0 label_false  (* si e1 == 0, sauter à false *)
-        @@ tr_expr e2           (* sinon évaluer e2 *)
-        @@ b label_end          (* et sauter à la fin *)
+        @@ beqz t0 label_false
+        @@ tr_expr e2
+        @@ b label_end
         @@ label label_false
-        @@ li t0 0              (* résultat = 0 *)
+        @@ li t0 0
         @@ label label_end
     | Or ->
-        (* e1 || e2 : évaluer e1, si vrai (!=0) alors résultat=1, sinon évaluer e2 *)
         let label_true = new_label () in
         let label_end = new_label () in
         tr_expr e1
-        @@ bnez t0 label_true   (* si e1 != 0, sauter à true *)
-        @@ tr_expr e2           (* sinon évaluer e2 *)
-        @@ b label_end          (* et sauter à la fin *)
+        @@ bnez t0 label_true
+        @@ tr_expr e2
+        @@ b label_end
         @@ label label_true
-        @@ li t0 1              (* résultat = 1 *)
+        @@ li t0 1
         @@ label label_end
-    | _ ->
-        (* Autres opérations binaires *)
-        let op = match bop with
+    | _ -> let op = match bop with
           | Add -> add
           | Sub -> (fun r1 r2 r3 -> S(Printf.sprintf "  sub  %s, %s, %s" r1 r2 r3))
           | Mul -> mul
@@ -94,77 +69,56 @@ let rec tr_expr e = match e.edesc with
           | And -> and_
           | Or  -> (fun r1 r2 r3 -> S(Printf.sprintf "  or   %s, %s, %s" r1 r2 r3))
         in
-        (* Évaluer e2 d'abord *)
         let code_e2 = tr_expr e2 in
-        (* Pousser le résultat sur la pile *)
         let code_push = push t0 in
-        (* Ajuster var_stack pour refléter le push (tous les offsets +4) *)
         let old_stack = !var_stack in
         var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
-        (* Évaluer e1 avec les offsets ajustés *)
         let code_e1 = tr_expr e1 in
-        (* Restaurer var_stack *)
         var_stack := old_stack;
-        (* Dépiler et calculer *)
         code_e2 @@ code_push @@ code_e1 @@ pop t1 @@ op t0 t0 t1)
   | Bool(b) -> li t0 (if b then 1 else 0)
-  | Nil -> li t0 0  (* nil est représenté par 0 *)
-  | Unop(op, e) ->
-    let instr = match op with
+  | Nil -> li t0 0
+  | Unop(op, e) -> let instr = match op with
       | Opp -> (fun r -> S(Printf.sprintf "  neg  %s, %s" r r))
       | Not -> (fun r -> S(Printf.sprintf "  xori %s, %s, 1" r r))
     in
     tr_expr e @@ instr t0
-  | Print(exprs) ->
-    (* Pour fmt.Print: appel système pour affichage *)
-    (match exprs with
-     | [e] ->
-         (* Si l'expression est un Call qui retourne plusieurs valeurs, afficher toutes les valeurs *)
-         (match e.edesc with
-         | Call(fname, _) ->
-             let n_returns = 
+  | Print(exprs) -> (match exprs with
+     | [e] -> (match e.edesc with
+         | Call(fname, _) -> let n_returns = 
                try Hashtbl.find func_table fname.id
-               with Not_found -> 1  (* Par défaut, 1 valeur de retour *)
+               with Not_found -> 1
              in
              if n_returns > 1 then
-               (* Évaluer le call (met les résultats dans $v0 et $v1) *)
                tr_expr e
-               (* Afficher $v0 *)
                @@ move a0 v0
                @@ li v0 1
                @@ syscall
-               (* Afficher $v1 *)
                @@ move a0 v1
                @@ li v0 1
                @@ syscall
              else
-               (* Une seule valeur de retour *)
                let syscall_code = 1 in
                tr_expr e
                @@ move a0 t0
                @@ li v0 syscall_code
                @@ syscall
          | String _ ->
-             (* String : syscall 4 *)
              tr_expr e
              @@ move a0 t0
              @@ li v0 4
              @@ syscall
          | Var(_) ->
-             (* Variable : afficher simplement sa valeur (qui peut être une adresse) *)
              tr_expr e
              @@ move a0 t0
              @@ li v0 1
              @@ syscall
          | _ ->
-             (* Autre expression : syscall 1 (print_int) *)
              tr_expr e
              @@ move a0 t0
              @@ li v0 1
              @@ syscall)
-     | exprs ->
-         (* Arguments multiples : afficher chaque expression *)
-         List.fold_left (fun code e ->
+     | exprs -> List.fold_left (fun code e ->
            let syscall_code = match e.edesc with
              | String _ -> 4
              | _ -> 1
@@ -176,59 +130,37 @@ let rec tr_expr e = match e.edesc with
            @@ syscall
          ) nop exprs)
   | Call(fname, args) ->
-    (* Appel de fonction : empiler les arguments puis appeler *)
-    (* 1. Évaluer et empiler les arguments dans l'ordre *)
-    (* IMPORTANT: Ajuster var_stack après chaque push pour les arguments suivants *)
     let old_stack = !var_stack in
     let push_args =
-      let rec push_args_rec args_list =
-        match args_list with
+      let rec push_args_rec args_list = match args_list with
         | [] -> nop
-        | arg :: rest ->
-            (* Évaluer l'argument avec le var_stack courant *)
+        | arg :: rest -> 
             let arg_code = tr_expr arg in
-            let push_code = push t0 in
-            (* Ajuster var_stack AVANT de traiter les arguments restants *)
-            var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
-            (* Générer le code pour les arguments restants (avec var_stack ajusté) *)
+            let push_code = push t0 in 
+            var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack; 
             let rest_code = push_args_rec rest in
             arg_code @@ push_code @@ rest_code
       in
       push_args_rec args
-    in
-    (* Restaurer var_stack *)
-    var_stack := old_stack;
-    (* 2. Appeler la fonction *)
-    let call_code = jal fname.id in
-    (* 3. Nettoyer la pile (nombre d'arguments * 4) *)
-    let cleanup = 
-      let n = List.length args in
+    in 
+    var_stack := old_stack; 
+    let call_code = jal fname.id in 
+    let cleanup =  let n = List.length args in
       if n > 0 then addi sp sp (n * 4) else nop
-    in
-    (* 4. Récupérer le résultat de $v0 dans $t0 *)
+    in 
     push_args @@ call_code @@ cleanup @@ move t0 v0
-  | Dot(e, field) ->
-    (* Accès à un champ de structure : e.field *)
-    (* e doit être un pointeur vers la structure *)
-    (* On charge le champ à l'offset approprié *)
-    let code_e = tr_expr e in
-    (* $t0 contient maintenant l'adresse de la structure *)
-    (* Trouver l'offset du champ *)
+  | Dot(e, field) -> 
+    let code_e = tr_expr e in 
     let offset = 
-      try
-        (* Chercher le champ dans toutes les structures définies *)
+      try 
         let rec find_field_offset structs =
           match structs with
-          | [] -> 
-              (* Fallback pour les anciennes structures hardcodées *)
+          | [] ->
               (match field.id with
                | "x" | "quo" -> 0
                | "y" | "rem" -> 4
                | _ -> 0)
-          | sd :: rest ->
-              (* Chercher le champ dans cette structure *)
-              let rec find_in_fields fields idx =
-                match fields with
+          | sd :: rest ->  let rec find_in_fields fields idx = match fields with
                 | [] -> None
                 | (fid, _) :: rest_fields ->
                     if fid.id = field.id then Some (idx * 4)
@@ -242,19 +174,17 @@ let rec tr_expr e = match e.edesc with
       with Not_found -> 0
     in
     code_e @@ lw t0 offset t0
-  | New(typename) ->
-    (* Allocation de structure sur le heap (avec sbrk syscall 9) *)
+  | New(typename) -> 
     let size = 
       try
         let def = List.find (fun sd -> sd.sname.id = typename) !struct_defs in
         List.length def.fields * 4
-      with Not_found -> 8  (* Par défaut, supposer 2 champs *)
+      with Not_found -> 8
     in
-    (* Utiliser syscall 9 (sbrk) pour allouer sur le heap *)
-    li a0 size           (* taille à allouer *)
-    @@ li v0 9           (* syscall sbrk *)
-    @@ syscall           (* $v0 contient maintenant l'adresse allouée *)
-    @@ move t0 v0        (* copier dans $t0 pour cohérence avec le reste du code *)
+    li a0 size
+    @@ li v0 9
+    @@ syscall
+    @@ move t0 v0
 
 
 let rec tr_seq = function
@@ -317,44 +247,28 @@ and tr_instr i = match i.idesc with
     var_stack := old_stack;
     code @@ (if dealloc > 0 then addi sp sp dealloc else nop)
     
-  | Set(lhs, rhs) ->
-    (* Assignation : lhs := rhs *)
-    (match lhs, rhs with
+  | Set(lhs, rhs) -> (match lhs, rhs with
      | [{ edesc = Var(id); _ }], [e] ->
-         (* Assignation simple : x := e *)
-         (* Évaluer l'expression (qui peut modifier var_stack si c'est new()) *)
          let code_e = tr_expr e in
-         (* PUIS capturer l'offset de la variable après l'évaluation *)
-         (try
-           let addr = List.assoc id.id !var_stack in
+         (try let addr = List.assoc id.id !var_stack in
            code_e @@ comment (Printf.sprintf "set %s at offset %d" id.id addr) @@ sw t0 addr sp
-         with Not_found ->
-           code_e @@ comment (Printf.sprintf "set: var %s non trouvée" id.id))
+         with Not_found -> code_e @@ comment (Printf.sprintf "set: var %s non trouvée" id.id))
      | [{ edesc = Dot(e_struct, field); _ }], [e_val] ->
-         (* Assignation à un champ : a.x := e *)
-         (* 1. Évaluer la valeur *)
          let code_val = tr_expr e_val in
-         (* 2. Pousser la valeur *)
          let code_push = push t0 in
-         (* 3. Ajuster var_stack pour le push *)
          let old_stack = !var_stack in
          var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
-         (* 4. Évaluer l'adresse de la structure *)
          let code_struct = tr_expr e_struct in
-         (* 5. Restaurer var_stack *)
          var_stack := old_stack;
-         (* 6. Trouver l'offset du champ dynamiquement *)
          let offset = 
            try
-             let rec find_field_offset structs =
-               match structs with
+             let rec find_field_offset structs = match structs with
                | [] -> 
                    (match field.id with
                     | "x" | "quo" -> 0
                     | "y" | "rem" -> 4
                     | _ -> 0)
-               | sd :: rest ->
-                   let rec find_in_fields fields idx =
+               | sd :: rest -> let rec find_in_fields fields idx =
                      match fields with
                      | [] -> None
                      | (fid, _) :: rest_fields ->
@@ -368,38 +282,29 @@ and tr_instr i = match i.idesc with
              find_field_offset !struct_defs
            with Not_found -> 0
          in
-         (* 7. Dépiler la valeur et la stocker *)
          code_val @@ code_push @@ code_struct @@ pop t1 @@ sw t1 offset t0
      | vars, exprs when (List.length vars = List.length exprs || 
                           (List.length vars > 1 && List.length exprs = 1 && 
                            match (List.hd exprs).edesc with Call _ -> true | _ -> false)) 
                          && List.length vars > 1 ->
-         (* Assignation multiple : x, y := a, b ou x, y := f() *)
          let n = List.length vars in
          let old_stack = !var_stack in
-         (* Cas spécial : si rhs est UN SEUL appel de fonction, c'est un retour multiple *)
          let push_code = 
            if List.length exprs = 1 then
              match (List.hd exprs).edesc with
-             | Call(fname, args) ->
-                 (* Appel avec retour multiple : évaluer, puis pousser $v1 et $v0 *)
-                 let push_args =
-                   List.fold_left (fun code arg ->
-                     code @@ tr_expr arg @@ push t0
-                   ) nop args
+             | Call(fname, args) -> 
+              let push_args =
+                   List.fold_left (fun code arg -> code @@ tr_expr arg @@ push t0 ) nop args
                  in
                  let call_code = jal fname.id in
                  let cleanup = 
                    let n_args = List.length args in
                    if n_args > 0 then addi sp sp (n_args * 4) else nop
                  in
-                 (* Pousser les 2 valeurs de retour sur la pile *)
                  push_args @@ call_code @@ cleanup
-                 @@ push v0  (* 1ère valeur en premier *)
-                 @@ push v1  (* 2ème valeur ensuite *)
-             | _ ->
-                 (* Assignation multiple normale : x, y := a, b *)
-                 let rec push_exprs_with_adjust exprs_list =
+                 @@ push v0
+                 @@ push v1
+             | _ -> let rec push_exprs_with_adjust exprs_list =
                    match exprs_list with
                    | [] -> nop
                    | e :: rest ->
@@ -410,7 +315,6 @@ and tr_instr i = match i.idesc with
                  in
                  push_exprs_with_adjust exprs
            else
-             (* Assignation multiple normale : x, y := a, b *)
              let rec push_exprs_with_adjust exprs_list =
                match exprs_list with
                | [] -> nop
@@ -422,17 +326,14 @@ and tr_instr i = match i.idesc with
              in
              push_exprs_with_adjust exprs
          in
-         (* 2. Assigner depuis la pile vers les variables *)
-         (* Les valeurs sont sur la pile à offsets 0, 4, 8, ... (en ordre inverse des vars) *)
-         (* Restaurer var_stack puis ajuster pour les n valeurs poussées *)
          var_stack := old_stack;
          var_stack := List.map (fun (name, off) -> (name, off + n * 4)) !var_stack;
          let rec assign_vars vars_list offset =
            match vars_list with
            | [] -> nop
            | { edesc = Var(id); _ } :: rest ->
-               (try
-                 let addr = List.assoc id.id !var_stack in
+               (try 
+               let addr = List.assoc id.id !var_stack in
                  lw t0 offset sp @@ sw t0 addr sp @@ assign_vars rest (offset + 4)
                with Not_found ->
                  comment (Printf.sprintf "set: var %s non trouvée" id.id) @@ assign_vars rest (offset + 4))
@@ -440,18 +341,12 @@ and tr_instr i = match i.idesc with
                assign_vars rest (offset + 4)
          in
          let assign_code = assign_vars (List.rev vars) 0 in
-         (* Restaurer var_stack puis nettoyer la pile *)
          var_stack := old_stack;
          push_code @@ assign_code @@ addi sp sp (4 * n)
-     | _ ->
-         (* Assignations complexes non supportées *)
-         nop)
+     | _ -> nop)
     
-  | Inc(e) ->
-    (* Incrémenter : e++ *)
-    (match e.edesc with
-     | Var(id) ->
-         (try
+  | Inc(e) -> (match e.edesc with
+     | Var(id) -> (try
            let offset = List.assoc id.id !var_stack in
            lw t0 offset sp
            @@ addi t0 t0 1
@@ -459,8 +354,7 @@ and tr_instr i = match i.idesc with
          with Not_found ->
            comment (Printf.sprintf "Inc: var %s non trouvée" id.id))
      | Dot(struct_e, field) ->
-         (* Incrémenter un champ de structure : r.quo++ *)
-         let code_struct = tr_expr struct_e in  (* $t0 = adresse de la structure *)
+         let code_struct = tr_expr struct_e in
          let offset = 
            try
              let rec find_field_offset structs =
@@ -486,13 +380,12 @@ and tr_instr i = match i.idesc with
            with Not_found -> 0
          in
          code_struct
-         @@ lw t1 offset t0      (* charger la valeur du champ *)
-         @@ addi t1 t1 1         (* incrémenter *)
-         @@ sw t1 offset t0      (* sauvegarder *)
+         @@ lw t1 offset t0
+         @@ addi t1 t1 1
+         @@ sw t1 offset t0
      | _ -> comment "Inc: expression non supportée")
     
   | Dec(e) ->
-    (* Décrémenter : e-- *)
     (match e.edesc with
      | Var(id) ->
          (try
@@ -503,7 +396,6 @@ and tr_instr i = match i.idesc with
          with Not_found ->
            comment (Printf.sprintf "Dec: var %s non trouvée" id.id))
      | Dot(struct_e, field) ->
-         (* Décrémenter un champ de structure : r.quo-- *)
          let code_struct = tr_expr struct_e in
          let offset = 
            try
@@ -536,73 +428,49 @@ and tr_instr i = match i.idesc with
      | _ -> comment "Dec: expression non supportée")
     
   | Vars(ids, _typ_opt, s) ->
-    (* Déclaration de variables locales *)
     let n = List.length ids in
     let total_size = n * 4 in
-    (* Les nouvelles variables seront aux offsets 0, 4, 8, ... depuis le NOUVEAU sp *)
-    (* Les anciennes variables voient leur offset augmenté de total_size *)
     var_stack := List.map (fun (name, off) -> (name, off + total_size)) !var_stack;
     List.iteri (fun i id ->
       var_stack := (id.id, i * 4) :: !var_stack
     ) ids;
-    
-    (* Cas spécial : si s contient un Set avec un appel de fonction multi-retour *)
-    (* On génère directement l'appel et on stocke dans les variables *)
     let init_code = 
       match s with
       | [{ idesc = Set(lhs, [{ edesc = Call(fname, args); _ }]); _ }] 
         when List.length lhs = n && n > 1 ->
-          (* Initialisation par appel de fonction multi-retour *)
-          (* 1. Empiler les arguments en ajustant var_stack après chaque push *)
           let old_stack_for_args = !var_stack in
           let push_args =
             let rec push_args_rec args_list =
               match args_list with
               | [] -> nop
               | arg :: rest ->
-                  (* Évaluer l'argument avec le var_stack courant *)
                   let arg_code = tr_expr arg in
                   let push_code = push t0 in
-                  (* Ajuster var_stack pour les arguments suivants *)
                   var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
-                  (* Récursion *)
                   let rest_code = push_args_rec rest in
                   arg_code @@ push_code @@ rest_code
             in
             push_args_rec args
           in
-          (* Restaurer var_stack *)
           var_stack := old_stack_for_args;
-          (* 2. Appeler la fonction *)
           let call_code = jal fname.id in
-          (* 3. Nettoyer les arguments *)
           let n_args = List.length args in
           let cleanup_args = 
             if n_args > 0 then addi sp sp (n_args * 4) else nop
           in
-          (* 4. Stocker directement $v0 et $v1 dans les variables *)
-          (* Après cleanup_args, sp pointe sur les variables allouées *)
-          (* Les variables sont à 0($sp) et 4($sp) *)
           push_args @@ call_code @@ cleanup_args
-          @@ sw v0 0 sp  (* stocker 1ère valeur *)
-          @@ sw v1 4 sp  (* stocker 2ème valeur *)
-      | _ ->
-          (* Initialisation normale via tr_seq *)
-          tr_seq s
+          @@ sw v0 0 sp
+          @@ sw v1 4 sp
+      | _ -> tr_seq s
     in
-    
-    (* Générer : allocation + initialisation *)
     addi sp sp (-total_size) @@ init_code
     
   | Return(exprs) ->
-    (* Retour de fonction : mettre les valeurs dans $v0, etc. et jr $ra *)
-    (* D'abord calculer combien de variables locales nettoyer *)
     let locals_size = (List.length !var_stack - !n_params) * 4 in
     let cleanup = 
       if !is_main_fun then
         if locals_size > 0 then addi sp sp locals_size else nop
       else
-        (* Fonction non-main : toujours restaurer $ra *)
         if locals_size > 0 then
           addi sp sp locals_size @@ pop ra
         else
@@ -611,36 +479,24 @@ and tr_instr i = match i.idesc with
     (match exprs with
      | [] -> cleanup @@ jr ra
      | [e] -> tr_expr e @@ move v0 t0 @@ cleanup @@ jr ra
-     | [e1; e2] -> 
-         (* Retours multiples : retourner 2 valeurs dans $v0 et $v1 *)
-         (* Évaluer e2 d'abord et sauver dans $v1 *)
+     | [e1; e2] ->
          tr_expr e2 @@ move v1 t0
-         (* Puis évaluer e1 dans $v0 *)
          @@ tr_expr e1 @@ move v0 t0
          @@ cleanup @@ jr ra
-     | e :: _rest -> 
-         (* Plus de 2 retours : pas supporté pour l'instant *)
+     | e :: _rest ->
          tr_expr e @@ move v0 t0 @@ cleanup @@ jr ra)
     
-  | Expr(e) ->
-    (* Expression utilisée comme instruction *)
-    tr_expr e
+  | Expr(e) -> tr_expr e
 
 
 let tr_fun df =
-  var_stack := [];  (* Réinitialiser pour chaque fonction *)
+  var_stack := [];
   let np = List.length df.params in
   n_params := np;
-  
-  (* Vérifier si c'est main *)
+   
   let is_main = df.fname.id = "main" in
   is_main_fun := is_main;
-  
-  (* Les paramètres restent sur la pile où ils ont été empilés *)
-  (* Pour div2(a, b) appelé avec push(45), push(6) : *)
-  (*   - 0($sp) = b (dernier empilé) *)
-  (*   - 4($sp) = a (premier empilé) *)
-  (* On les ajoute à var_stack avec leurs offsets *)
+
   let rec add_params params idx =
     match params with
     | [] -> ()
@@ -651,15 +507,12 @@ let tr_fun df =
   in
   add_params df.params 0;
   
-  (* Toujours sauvegarder $ra, même pour main (car main peut appeler d'autres fonctions) *)
+  
   let save_ra = push ra in
-  (* Ajuster les offsets des paramètres après save $ra *)
   var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
   
-  (* Traduire le corps de la fonction *)
   let body_code = tr_seq df.body in
-  
-  (* Ajouter un return implicite à la fin si la fonction ne retourne pas *)
+
   let has_explicit_return = 
     match List.rev df.body with
     | { idesc = Return _; _ } :: _ -> true
@@ -669,8 +522,6 @@ let tr_fun df =
     if has_explicit_return then
       nop
     else 
-      (* Fonction sans return explicite : restaurer $ra et retourner *)
-      (* Calculer locals_size APRÈS tr_seq pour avoir le var_stack final *)
       let locals_size = (List.length !var_stack - np) * 4 in
       if locals_size > 0 then
         addi sp sp locals_size @@ pop ra @@ jr ra
@@ -726,7 +577,6 @@ let collect_strings prog =
 
 let tr_data () =
   let escape_string s =
-    (* Échapper \ en premier pour éviter de ré-échapper les autres *)
     let s = String.concat "\\\\" (String.split_on_char '\\' s) in
     let s = String.concat "\\n" (String.split_on_char '\n' s) in
     let s = String.concat "\\t" (String.split_on_char '\t' s) in
@@ -743,9 +593,7 @@ let tr_data () =
       List.fold_left (fun acc decl -> acc @@ decl) first rest
 
 let tr_prog p =
-  (* Collecter les définitions de structures *)
   struct_defs := [];
-  (* Initialiser la table des fonctions *)
   Hashtbl.clear func_table;
   let (_, decls) = p in
   List.iter (fun d -> match d with
@@ -754,10 +602,10 @@ let tr_prog p =
   ) decls;
   
   collect_strings p;
-  (* Ajouter un saut initial vers main comme point d'entrée *)
   let entry_point = 
     jal "main" 
     @@ li v0 10 
     @@ syscall 
   in
   { text = entry_point @@ tr_ldecl (snd p) ; data = tr_data () }
+

@@ -1,5 +1,9 @@
 # Projet Compilation
 
+Lucas Iltis
+Abel Julin
+LDD3-IM
+
 ## Organisation du Travail
 
 Nous avons opté pour la création d'un github partagé pour faciliter le travail de par l'intégration de git à VSCode. Ce fichier MarkDown fait office de rapport.
@@ -79,9 +83,9 @@ Pour la partie 2, nous avons rajouté beaucoup de tests, essentiellement pour co
 - Crée tous les fichiers mips : ./make_mips.sh
 
 
-## Problèmes rencontrés :
+# Problèmes rencontrés :
 
-# Teste de masquage dans shadowing.go :
+## Teste de masquage dans shadowing.go :
 
 Problème : une déclaration intérieure x := ... dans un bloc était rejetée par le compilateur (erreur « variable x already defined »).
 Cause : le typechecker utilisait une seule table globale de variables; toute nouvelle declaration était comparée à l'ensemble global, empêchant le masquage lexical.
@@ -91,7 +95,7 @@ Détail : add_var n’ajoute plus que dans la portée courante (top de la pile);
 Portée : on pousse une nouvelle table (scope) avant de typer les Block, les branches If et les corps For, et on la pop après vérification.
 Résultat : les déclarations locales peuvent masquer des noms externes sans erreur, et les variables externes restent accessibles hors de la portée et shadowing.go passe les tests de typage.
 
-# Problème : typage de nil dans les comparaisons
+## Typage de nil dans les comparaisons
 
 Test nil.go contenait if (p == nil) où p est de type *T.
 Le typechecker original appelait type_expr sur les deux opérandes avant de vérifier s'il s'agissait d'une comparaison avec nil.
@@ -110,7 +114,7 @@ Résultat : p == nil et nil == p passent maintenant la vérification de types et
 
 
 
-## Implémentation du ; automatique
+# Implémentation du ; automatique
 
 L'insertion automatique de point-virgule en Go suit cette règle : quand une nouvelle ligne survient après certains tokens (identifiants, constantes, return, }, ++, --, etc.), un ; est inséré automatiquement.
 
@@ -118,10 +122,10 @@ Une variable globale last_was_semicolon_candidate (bool) indique si le dernier t
 
 À chaque '\n' rencontré, le lexer vérifie le flag : s'il est vrai, il retourne le token SEMI et réinitialise le flag, sinon il continue l'analyse. La même logique s'applique dans les commentaires /* */ et // : si un saut de ligne survient et que le flag est actif, un SEMI est injecté. Les point-virgules explicites réinitialisent le flag sans vérification supplémentaire.
 
-## Grandes étapes : 
+# Grandes étapes : 
 
 
-### mgolexer.mll (Lexer)
+## mgolexer.mll (Lexer)
 
 Le lexer transforme le flux de caractères en tokens reconnaissables par le parser. Il gère d'abord les mots-clés (if, for, return, func, struct, etc.) et les opérateurs (&&, ||, ==, :=, ++, --). Les identifiants sont distingués des mots-clés via une table de hachage. Les constantes sont reconnues : entiers décimaux/hexadécimaux, booléens (true/false), chaînes avec échappements (\n, \t, ", \), et nil.
 
@@ -129,7 +133,7 @@ L'insertion automatique de point-virgule suit la règle Go : un flag last_was_se
 
 Les commentaires sont gérés de deux façons : // consomme jusqu'à la fin de ligne (avec insertion de ; si nécessaire), et /* */ peut être multi-lignes (avec même logique d'insertion). Les espaces, tabulations et retours chariot sont ignorés. La position (ligne, colonne) est maintenue via Lexing.lexeme_start_p pour les messages d'erreur précis du typechecker.
 
-### mgoparser.mly (Parser)
+## mgoparser.mly (Parser)
 
 Le parser construit l'AST à partir des tokens du lexer en suivant la grammaire Micro-Go. La structure principale est file → liste de déclarations (structures et fonctions), avec vérification que main() existe et correspond à la signature attendue.
 
@@ -142,7 +146,7 @@ Les instructions incluent : blocs { stmts }, conditionnelles if expr { } else { 
 L'ambiguïté x := e vs simple expression est résolue au niveau lexical : := est un token unique COLONEQ. Les listes d'expressions/identifiants utilisent des séparateurs virgules avec règles non-ambiguës. Les parenthèses forcent la priorité et permettent les expressions complexes. Le parser génère directement l'AST typé (mgoast.ml) avec positions pour le typechecker.
 
 
-### Typechecker
+### typechecker.ml
 
 Le typechecker implémente la vérification de types pour Micro-Go en suivant une architecture modulaire en trois phases distinctes.
 
@@ -156,7 +160,7 @@ La validation globale s'effectue en trois passes : (1) enregistrement des noms d
 
 Les messages montrent la localisation précise (fichier, ligne, colonnes) pour faciliter le débugage.
 
-### Compile.ml
+## compile.ml
 
 
 1. Variables globales

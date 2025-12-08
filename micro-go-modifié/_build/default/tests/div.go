@@ -24,5 +24,5 @@ func main() {
 	fmt.Print(div1(45,6)); fmt.Print("\n");
 	fmt.Print(div2(45,6)); fmt.Print("\n");
 	r:=div3(45,6); fmt.Print(r.quo,r.rem); fmt.Print("\n");
-	fmt.Print(r); fmt.Print("\n");
+	fmt.Print(r); fmt.Print("\n");    //renvoi l'adresse de la structure
 };

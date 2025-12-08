@@ -87,9 +87,3 @@ _str_1:
   .asciiz "\n"
 _str_0:
   .asciiz "BEGIN "
-_ampopen:
-  .asciiz "&{"
-_close:
-  .asciiz "}"
-_space:
-  .asciiz " "

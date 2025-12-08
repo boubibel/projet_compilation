@@ -737,17 +737,10 @@ let tr_data () =
   let string_decls = List.map (fun (s, id) ->
     label id @@ asciiz (Printf.sprintf "\"%s\"" (escape_string s))
   ) !string_map in
-  (* Ajouter les chaînes spéciales pour l'affichage des structures *)
-  let special_strings =
-    label "_ampopen" @@ asciiz "\"&{\""
-    @@ label "_close" @@ asciiz "\"}\""
-    @@ label "_space" @@ asciiz "\" \""
-  in
   match string_decls with
-  | [] -> special_strings
+  | [] -> nop
   | first :: rest ->
       List.fold_left (fun acc decl -> acc @@ decl) first rest
-      @@ special_strings
 
 let tr_prog p =
   (* Collecter les définitions de structures *)

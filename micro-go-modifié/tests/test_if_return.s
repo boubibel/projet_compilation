@@ -58,9 +58,3 @@ _label_1:
 .data
 _str_0:
   .asciiz "\n"
-_ampopen:
-  .asciiz "&{"
-_close:
-  .asciiz "}"
-_space:
-  .asciiz " "

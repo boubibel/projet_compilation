@@ -4,7 +4,13 @@
   syscall
 main:
   addi $sp, $sp, -4
-  li   $t0, 1
+  sw   $ra, 0($sp)
+  addi $sp, $sp, -4
+  li   $a0, 4
+  li   $v0, 9
+  syscall
+  move $t0, $v0
+  # set p at offset 0
   sw   $t0, 0($sp)
   li   $t0, 0
   addi $sp, $sp, -4
@@ -25,5 +31,8 @@ _label_0:
   li   $v0, 1
   syscall
 _label_1:
+  addi $sp, $sp, 4
+  lw   $ra, 0($sp)
+  addi $sp, $sp, 4
   jr   $ra
 .data

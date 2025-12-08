@@ -3,6 +3,8 @@
   li   $v0, 10
   syscall
 main:
+  addi $sp, $sp, -4
+  sw   $ra, 0($sp)
   li   $t0, 45
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
@@ -45,12 +47,15 @@ main:
   jal  div3
   addi $sp, $sp, 8
   move $t0, $v0
+  # set r at offset 0
   sw   $t0, 0($sp)
-  li   $t0, 0
+  lw   $t0, 0($sp)
+  lw   $t0, 0($t0)
   move $a0, $t0
   li   $v0, 1
   syscall
-  li   $t0, 0
+  lw   $t0, 0($sp)
+  lw   $t0, 4($t0)
   move $a0, $t0
   li   $v0, 1
   syscall
@@ -66,13 +71,27 @@ main:
   move $a0, $t0
   li   $v0, 4
   syscall
+  addi $sp, $sp, 4
+  lw   $ra, 0($sp)
+  addi $sp, $sp, 4
   jr   $ra
 div3:
   addi $sp, $sp, -4
   sw   $ra, 0($sp)
   addi $sp, $sp, -4
-  li   $t0, 1
+  li   $a0, 8
+  li   $v0, 9
+  syscall
+  move $t0, $v0
+  # set r at offset 0
   sw   $t0, 0($sp)
+  li   $t0, 0
+  addi $sp, $sp, -4
+  sw   $t0, 0($sp)
+  lw   $t0, 4($sp)
+  lw   $t1, 0($sp)
+  addi $sp, $sp, 4
+  sw   $t1, 0($t0)
   b    _label_4
 _label_5:
   # Inc: expression non supportée
@@ -83,6 +102,7 @@ _label_5:
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   sub  $t0, $t0, $t1
+  # set a at offset 12
   sw   $t0, 12($sp)
 _label_4:
   lw   $t0, 8($sp)
@@ -93,12 +113,16 @@ _label_4:
   addi $sp, $sp, 4
   sge  $t0, $t0, $t1
   bnez $t0, _label_5
+  lw   $t0, 12($sp)
+  addi $sp, $sp, -4
+  sw   $t0, 0($sp)
+  lw   $t0, 4($sp)
+  lw   $t1, 0($sp)
+  addi $sp, $sp, 4
+  sw   $t1, 0($t0)
   lw   $t0, 0($sp)
   move $v0, $t0
   addi $sp, $sp, 4
-  lw   $ra, 0($sp)
-  addi $sp, $sp, 4
-  jr   $ra
   lw   $ra, 0($sp)
   addi $sp, $sp, 4
   jr   $ra
@@ -107,6 +131,7 @@ div2:
   sw   $ra, 0($sp)
   addi $sp, $sp, -4
   li   $t0, 0
+  # set q at offset 0
   sw   $t0, 0($sp)
   b    _label_2
 _label_3:
@@ -120,6 +145,7 @@ _label_3:
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   sub  $t0, $t0, $t1
+  # set a at offset 12
   sw   $t0, 12($sp)
 _label_2:
   lw   $t0, 8($sp)
@@ -133,9 +159,6 @@ _label_2:
   lw   $t0, 0($sp)
   move $v0, $t0
   addi $sp, $sp, 4
-  lw   $ra, 0($sp)
-  addi $sp, $sp, 4
-  jr   $ra
   lw   $ra, 0($sp)
   addi $sp, $sp, 4
   jr   $ra
@@ -177,5 +200,4 @@ _label_1:
   jr   $ra
 .data
 _str_0:
-  .asciiz "
-"
+  .asciiz "\n"

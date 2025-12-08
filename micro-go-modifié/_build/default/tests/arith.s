@@ -3,6 +3,8 @@
   li   $v0, 10
   syscall
 main:
+  addi $sp, $sp, -4
+  sw   $ra, 0($sp)
   li   $t0, 6
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
@@ -43,5 +45,7 @@ main:
   move $a0, $t0
   li   $v0, 1
   syscall
+  lw   $ra, 0($sp)
+  addi $sp, $sp, 4
   jr   $ra
 .data

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script pour exécuter un fichier .s avec SPIM
+# Script pour exécuter un fichier .s avec MARS ou SPIM
 
 if [ $# -eq 0 ]; then
     echo "Usage: ./run_mips.sh <fichier.s>"
@@ -13,14 +13,33 @@ if [ ! -f "$FILE" ]; then
     exit 1
 fi
 
-# Vérifier si spim est installé
-if command -v spim &> /dev/null; then
+# Chercher MARS
+MARS_JAR=""
+if [ -f "Mars4_5.jar" ]; then
+    MARS_JAR="Mars4_5.jar"
+elif [ -f "Mars.jar" ]; then
+    MARS_JAR="Mars.jar"
+elif [ -f "../Mars4_5.jar" ]; then
+    MARS_JAR="../Mars4_5.jar"
+elif [ -f "../Mars.jar" ]; then
+    MARS_JAR="../Mars.jar"
+fi
+
+# Essayer MARS d'abord
+if [ -n "$MARS_JAR" ] && command -v java &> /dev/null; then
+    echo "=== Exécution avec MARS ==="
+    java -jar "$MARS_JAR" "$FILE"
+# Sinon essayer SPIM
+elif command -v spim &> /dev/null; then
     echo "=== Exécution avec SPIM ==="
     spim -file "$FILE"
 else
-    echo "SPIM n'est pas installé."
-    echo "Pour installer: brew install spim"
+    echo "Erreur: Aucun simulateur MIPS trouvé."
     echo ""
-    echo "Ou utilise MARS en ligne: https://www.cs.cornell.edu/courses/cs3410/2019sp/tools/mips/"
+    echo "Options:"
+    echo "1. Télécharger MARS: http://courses.missouristate.edu/kenvollmar/mars/"
+    echo "   Placer Mars.jar dans ce dossier"
+    echo "2. Installer SPIM: brew install spim"
+    echo "3. Utiliser MARS en ligne: https://kobzol.github.io/davis/"
     exit 1
 fi

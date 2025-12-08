@@ -2,7 +2,7 @@
 
 ## Organisation du Travail
 
-Nous avons opté pour la création d'un github partagé pour faciliter le travail de par l'intégration de git à VSCode. Le README fait office de rapport.
+Nous avons opté pour la création d'un github partagé pour faciliter le travail de par l'intégration de git à VSCode. Ce fichier MarkDown fait office de rapport.
 On y a détaillé les grandes étapes, ce que font les tests, et des problèmes rencontrés dans le développement du projet.
 
 
@@ -12,11 +12,12 @@ On y a détaillé les grandes étapes, ce que font les tests, et des problèmes 
 **Pour Tester la partie 1 : make test**
 **Pour la partie 2 :**
 **Nous avons testé les fichiers mips (en .s) avec MARS**
-**Nous avons utilisé l'intelligence artificielle pour créer un script permettant de créer les fichiers mips. Et également pour la création de certains tests pour être sûrs de couvrir tous les cas de figures**
+**Nous avons utilisé l'intelligence artificielle pour créer un script permettant de créer les fichiers mips. Et également pour la création de certains tests pour être sûr de couvrir tous les cas de figures et pour débugger div.s**
 
 
 On a enlevé du make test les tests relevant une erreur pour permettre d'executer tous les tests qui passent, on vérifie les tests relevant une erreur un par un avec :
-**./_build/default/mgoc.exe -- type-only tests/nom.go**
+**./_build/default/mgoc.exe tests/nom.go**
+en vérifiant qu'il relève bien l'erreur voulue
 
 Arith.go : calcul arithmétique
 Teste : priorités d'associativité entre les opérations
@@ -66,19 +67,16 @@ Multiple_assign.go : Teste assignations multiples
 
 ## Tests Partie 2
 
-Nous avons créer beaucoup de tests dans la Partie 2, essentiellement pour régler le problème lié à div.go qui ne renvoyait pas les bonnes valeurs lors de l'éxecution dans MARS. On a ainsi séparé les 3 fonctions dans plusieurs fichiers pour tester leurs comportements séparément.
-
 **./make_mips.sh pour créer les fichiers MIPS**
+
+Pour la partie 2, nous avons rajouté beaucoup de tests, essentiellement pour corriger le problème lors de la création de div.s. Il n'affichait pas le bon résultat dans MARS, nous avons donc dû séparés chacunes des 3 fonctions dans des fichiers séparés pour vérifier leur bon comportement une à une. Nous avons ensuite testé chaque fichier dans MARS en vérifiant que la valeur renvoyée était bien la bonne.
 
 
 ## Commandes :
 - Executer fichier de test : go run tests/nom.go
-- ./make_mips.sh pour créer tous les fichiers MIPS
-- Tester typage : ./_build/default/mgoc.exe -- type-only tests/nom.go
-- Construire le mips un par un : ./_build/default/mgoc.exe tests/nom.go
-
-
-
+- Vérifie le type un par un : ./_build/default/mgoc.exe --type-only tests/nom.go
+- Crée le fichier mips en .s ./_build/default/mgoc.exe tests/nom.go
+- Crée tous les fichiers mips : ./make_mips.sh
 
 
 ## Problèmes rencontrés :
@@ -125,48 +123,23 @@ Une variable globale last_was_semicolon_candidate (bool) indique si le dernier t
 
 ### mgolexer.mll (Lexer)
 
-Gestion des mots-clés : Création d'une table de hachage pour identifier les mots-clés Go (package, func, if, for, return, etc.) et les distinguer des identifiants simples.
+Le lexer transforme le flux de caractères en tokens reconnaissables par le parser. Il gère d'abord les mots-clés (if, for, return, func, struct, etc.) et les opérateurs (&&, ||, ==, :=, ++, --). Les identifiants sont distingués des mots-clés via une table de hachage. Les constantes sont reconnues : entiers décimaux/hexadécimaux, booléens (true/false), chaînes avec échappements (\n, \t, ", \), et nil.
 
-Parsing des entiers : Implémentation du support des littéraux entiers décimaux et hexadécimaux (0x/0X) avec validation des bornes (0 à 2⁶³-1).
+L'insertion automatique de point-virgule suit la règle Go : un flag last_was_semicolon_candidate mémorise si le dernier token peut déclencher un ; automatique (IDENT, INT, RETURN, }, ++, --). À chaque '\n' rencontré, si le flag est vrai, un token SEMI est injecté automatiquement avant de continuer.
 
-Gestion des chaînes : Mise en place d'un buffer pour construire les chaînes de caractères avec support des séquences d'échappement (\n, \t, \", \\).
-
-Injection automatique de points-virgules : Système avec un flag last_was_semicolon_candidate pour insérer automatiquement des ; après certains tokens (identifiants, littéraux, return, ++, --, ), }).
-
-Gestion des commentaires : Implémentation de deux types de commentaires (multi-ligne /* */ et ligne simple //) avec intégration du système d'injection de points-virgules.
-
-Reconnaissance des opérateurs : Distinction entre opérateurs multi-caractères (&&, ||, ==, !=, <=, >=, ++, --) et simples (+, -, *, /, %, !, =).
-
-Traitement spécial pour := : Détection des listes d'identifiants séparées par des virgules suivies de := pour générer un token IDS_DECL (déclaration courte).
-
-Gestion des retours à la ligne : Suivi des nouvelles lignes pour la localisation d'erreurs et l'injection contextuelle de points-virgules.
-
-Tokens de ponctuation : Reconnaissance des délimiteurs ((, ), {, }, ;, ,, .) essentiels pour la structure syntaxique.
-
-Gestion d'erreurs : Levée d'exceptions avec messages explicites pour caractères inconnus, littéraux invalides, commentaires et chaînes non terminés.
+Les commentaires sont gérés de deux façons : // consomme jusqu'à la fin de ligne (avec insertion de ; si nécessaire), et /* */ peut être multi-lignes (avec même logique d'insertion). Les espaces, tabulations et retours chariot sont ignorés. La position (ligne, colonne) est maintenue via Lexing.lexeme_start_p pour les messages d'erreur précis du typechecker.
 
 ### mgoparser.mly (Parser)
 
-Déclaration des tokens et priorités : Définition de tous les tokens du lexer et établissement des règles de priorité/associativité pour les opérateurs (%left, %right, %nonassoc).
+Le parser construit l'AST à partir des tokens du lexer en suivant la grammaire Micro-Go. La structure principale est file → liste de déclarations (structures et fonctions), avec vérification que main() existe et correspond à la signature attendue.
 
-Structure du programme : Règle prog pour parser la déclaration package, l'import optionnel de fmt et la liste des déclarations globales (structures et fonctions).
+Les déclarations de structures (struct S { champs }) et de fonctions (func f(params) returns { body }) sont parsées avec leurs types. Les paramètres peuvent avoir plusieurs identifiants partageant le même type (a, b int). Les valeurs de retour multiples sont supportées via une liste de types.
 
-Définition des structures : Parser pour type ident struct { fields } avec gestion de listes de champs de la forme ident+ type séparés par des points-virgules.
+Les expressions suivent la priorité des opérateurs Go : OR (||) < AND (&&) < comparaisons (==, !=, <, <=, >, >=) < addition/soustraction < multiplication/division/modulo < unaires (!, -) < primaires (appels, accès champs, new). Cette hiérarchie élimine les conflits shift/reduce.
 
-Système de types : Règle typ pour reconnaître les types de base (int, bool, string) et les types structurés (pointeurs *ident).
+Les instructions incluent : blocs { stmts }, conditionnelles if expr { } else { }, boucles for (trois formes : infinie, avec condition, avec init/cond/post), assignations simples/multiples (x := e ou x, y := a, b), déclarations de variables (var x, y typ := init), return avec valeurs multiples, et incréments/décréments.
 
-Déclarations de fonctions : Parser pour func ident(params) return_type? bloc avec support des paramètres multiples et retours multiples (tuple).
-
-Gestion des blocs : Structure { (instr ;)* instr? } permettant des blocs vides ou avec instructions séparées par des points-virgules (le dernier étant optionnel).
-
-Instructions de contrôle : Implémentation de if/else, for (avec ou sans condition), var (avec type et initialisation optionnels), et return avec valeurs multiples.
-
-Instructions simples : Support des expressions, incréments/décréments (++/--), affectations multiples (x,y = e1,e2) et déclarations courtes (x,y := e1,e2).
-
-Expressions complexes : Système d'expressions avec opérateurs binaires (arithmétiques, logiques, comparaisons) et unaires (négation -, !), accès aux champs (.), appels de fonctions.
-
-Cas spéciaux : Gestion de new(StructName) pour l'allocation, fmt.Print(...) pour l'affichage, et construction d'AST avec localisation (loc) pour chaque nœud syntaxique.
-
+L'ambiguïté x := e vs simple expression est résolue au niveau lexical : := est un token unique COLONEQ. Les listes d'expressions/identifiants utilisent des séparateurs virgules avec règles non-ambiguës. Les parenthèses forcent la priorité et permettent les expressions complexes. Le parser génère directement l'AST typé (mgoast.ml) avec positions pour le typechecker.
 
 
 ### Typechecker

@@ -21,6 +21,9 @@ let next_string_id = ref 0
 (* collecte les définitions de structures : nom -> liste de champs *)
 let struct_defs = ref []
 
+(* table des fonctions : nom -> nombre de valeurs de retour *)
+let func_table = Hashtbl.create 16
+
 (* le résultat de l'expression est dans le registre $t0,
    la pile est utilisée pour les valeurs intermédiaires *)
 let rec tr_expr e = match e.edesc with
@@ -113,15 +116,43 @@ let rec tr_expr e = match e.edesc with
     (* Pour fmt.Print: appel système pour affichage *)
     (match exprs with
      | [e] ->
-         (* Détecter si c'est une string pour utiliser le bon syscall *)
-         let syscall_code = match e.edesc with
-           | String _ -> 4  (* syscall 4 = print_string *)
-           | _ -> 1         (* syscall 1 = print_int *)
-         in
-         tr_expr e
-         @@ move a0 t0
-         @@ li v0 syscall_code
-         @@ syscall
+         (* Si l'expression est un Call qui retourne plusieurs valeurs, afficher toutes les valeurs *)
+         (match e.edesc with
+         | Call(fname, _) ->
+             let n_returns = 
+               try Hashtbl.find func_table fname.id
+               with Not_found -> 1  (* Par défaut, 1 valeur de retour *)
+             in
+             if n_returns > 1 then
+               (* Évaluer le call (met les résultats dans $v0 et $v1) *)
+               tr_expr e
+               (* Afficher $v0 *)
+               @@ move a0 v0
+               @@ li v0 1
+               @@ syscall
+               (* Afficher $v1 *)
+               @@ move a0 v1
+               @@ li v0 1
+               @@ syscall
+             else
+               (* Une seule valeur de retour *)
+               let syscall_code = 1 in
+               tr_expr e
+               @@ move a0 t0
+               @@ li v0 syscall_code
+               @@ syscall
+         | String _ ->
+             (* String : syscall 4 *)
+             tr_expr e
+             @@ move a0 t0
+             @@ li v0 4
+             @@ syscall
+         | _ ->
+             (* Autre expression : syscall 1 (print_int) *)
+             tr_expr e
+             @@ move a0 t0
+             @@ li v0 1
+             @@ syscall)
      | exprs ->
          (* Arguments multiples : afficher chaque expression *)
          List.fold_left (fun code e ->
@@ -138,11 +169,26 @@ let rec tr_expr e = match e.edesc with
   | Call(fname, args) ->
     (* Appel de fonction : empiler les arguments puis appeler *)
     (* 1. Évaluer et empiler les arguments dans l'ordre *)
+    (* IMPORTANT: Ajuster var_stack après chaque push pour les arguments suivants *)
+    let old_stack = !var_stack in
     let push_args =
-      List.fold_left (fun code arg ->
-        code @@ tr_expr arg @@ push t0
-      ) nop args
+      let rec push_args_rec args_list =
+        match args_list with
+        | [] -> nop
+        | arg :: rest ->
+            (* Évaluer l'argument avec le var_stack courant *)
+            let arg_code = tr_expr arg in
+            let push_code = push t0 in
+            (* Ajuster var_stack AVANT de traiter les arguments restants *)
+            var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
+            (* Générer le code pour les arguments restants (avec var_stack ajusté) *)
+            let rest_code = push_args_rec rest in
+            arg_code @@ push_code @@ rest_code
+      in
+      push_args_rec args
     in
+    (* Restaurer var_stack *)
+    var_stack := old_stack;
     (* 2. Appeler la fonction *)
     let call_code = jal fname.id in
     (* 3. Nettoyer la pile (nombre d'arguments * 4) *)
@@ -315,25 +361,63 @@ and tr_instr i = match i.idesc with
          in
          (* 7. Dépiler la valeur et la stocker *)
          code_val @@ code_push @@ code_struct @@ pop t1 @@ sw t1 offset t0
-     | vars, exprs when List.length vars = List.length exprs && List.length vars > 1 ->
-         (* Assignation multiple : x, y := a, b *)
+     | vars, exprs when (List.length vars = List.length exprs || 
+                          (List.length vars > 1 && List.length exprs = 1 && 
+                           match (List.hd exprs).edesc with Call _ -> true | _ -> false)) 
+                         && List.length vars > 1 ->
+         (* Assignation multiple : x, y := a, b ou x, y := f() *)
          let n = List.length vars in
          let old_stack = !var_stack in
-         (* 1. Évaluer toutes les expressions et les pousser sur la pile *)
-         (* Ajuster var_stack pour chaque push *)
-         let rec push_exprs_with_adjust exprs_list =
-           match exprs_list with
-           | [] -> nop
-           | e :: rest ->
-               let code_e = tr_expr e in
-               let code_push = push t0 in
-               (* Ajuster var_stack après le push *)
-               var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
-               code_e @@ code_push @@ push_exprs_with_adjust rest
+         (* Cas spécial : si rhs est UN SEUL appel de fonction, c'est un retour multiple *)
+         let push_code = 
+           if List.length exprs = 1 then
+             match (List.hd exprs).edesc with
+             | Call(fname, args) ->
+                 (* Appel avec retour multiple : évaluer, puis pousser $v1 et $v0 *)
+                 let push_args =
+                   List.fold_left (fun code arg ->
+                     code @@ tr_expr arg @@ push t0
+                   ) nop args
+                 in
+                 let call_code = jal fname.id in
+                 let cleanup = 
+                   let n_args = List.length args in
+                   if n_args > 0 then addi sp sp (n_args * 4) else nop
+                 in
+                 (* Pousser les 2 valeurs de retour sur la pile *)
+                 push_args @@ call_code @@ cleanup
+                 @@ push v0  (* 1ère valeur en premier *)
+                 @@ push v1  (* 2ème valeur ensuite *)
+             | _ ->
+                 (* Assignation multiple normale : x, y := a, b *)
+                 let rec push_exprs_with_adjust exprs_list =
+                   match exprs_list with
+                   | [] -> nop
+                   | e :: rest ->
+                       let code_e = tr_expr e in
+                       let code_push = push t0 in
+                       var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
+                       code_e @@ code_push @@ push_exprs_with_adjust rest
+                 in
+                 push_exprs_with_adjust exprs
+           else
+             (* Assignation multiple normale : x, y := a, b *)
+             let rec push_exprs_with_adjust exprs_list =
+               match exprs_list with
+               | [] -> nop
+               | e :: rest ->
+                   let code_e = tr_expr e in
+                   let code_push = push t0 in
+                   var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
+                   code_e @@ code_push @@ push_exprs_with_adjust rest
+             in
+             push_exprs_with_adjust exprs
          in
-         let push_code = push_exprs_with_adjust exprs in
          (* 2. Assigner depuis la pile vers les variables *)
          (* Les valeurs sont sur la pile à offsets 0, 4, 8, ... (en ordre inverse des vars) *)
+         (* Restaurer var_stack puis ajuster pour les n valeurs poussées *)
+         var_stack := old_stack;
+         var_stack := List.map (fun (name, off) -> (name, off + n * 4)) !var_stack;
          let rec assign_vars vars_list offset =
            match vars_list with
            | [] -> nop
@@ -452,9 +536,54 @@ and tr_instr i = match i.idesc with
     List.iteri (fun i id ->
       var_stack := (id.id, i * 4) :: !var_stack
     ) ids;
-    (* Générer : allocation + corps (PAS de désallocation car new() peut avoir modifié var_stack) *)
-    addi sp sp (-total_size)
-    @@ tr_seq s
+    
+    (* Cas spécial : si s contient un Set avec un appel de fonction multi-retour *)
+    (* On génère directement l'appel et on stocke dans les variables *)
+    let init_code = 
+      match s with
+      | [{ idesc = Set(lhs, [{ edesc = Call(fname, args); _ }]); _ }] 
+        when List.length lhs = n && n > 1 ->
+          (* Initialisation par appel de fonction multi-retour *)
+          (* 1. Empiler les arguments en ajustant var_stack après chaque push *)
+          let old_stack_for_args = !var_stack in
+          let push_args =
+            let rec push_args_rec args_list =
+              match args_list with
+              | [] -> nop
+              | arg :: rest ->
+                  (* Évaluer l'argument avec le var_stack courant *)
+                  let arg_code = tr_expr arg in
+                  let push_code = push t0 in
+                  (* Ajuster var_stack pour les arguments suivants *)
+                  var_stack := List.map (fun (name, off) -> (name, off + 4)) !var_stack;
+                  (* Récursion *)
+                  let rest_code = push_args_rec rest in
+                  arg_code @@ push_code @@ rest_code
+            in
+            push_args_rec args
+          in
+          (* Restaurer var_stack *)
+          var_stack := old_stack_for_args;
+          (* 2. Appeler la fonction *)
+          let call_code = jal fname.id in
+          (* 3. Nettoyer les arguments *)
+          let n_args = List.length args in
+          let cleanup_args = 
+            if n_args > 0 then addi sp sp (n_args * 4) else nop
+          in
+          (* 4. Stocker directement $v0 et $v1 dans les variables *)
+          (* Après cleanup_args, sp pointe sur les variables allouées *)
+          (* Les variables sont à 0($sp) et 4($sp) *)
+          push_args @@ call_code @@ cleanup_args
+          @@ sw v0 0 sp  (* stocker 1ère valeur *)
+          @@ sw v1 4 sp  (* stocker 2ème valeur *)
+      | _ ->
+          (* Initialisation normale via tr_seq *)
+          tr_seq s
+    in
+    
+    (* Générer : allocation + initialisation *)
+    addi sp sp (-total_size) @@ init_code
     
   | Return(exprs) ->
     (* Retour de fonction : mettre les valeurs dans $v0, etc. et jr $ra *)
@@ -473,8 +602,15 @@ and tr_instr i = match i.idesc with
     (match exprs with
      | [] -> cleanup @@ jr ra
      | [e] -> tr_expr e @@ move v0 t0 @@ cleanup @@ jr ra
+     | [e1; e2] -> 
+         (* Retours multiples : retourner 2 valeurs dans $v0 et $v1 *)
+         (* Évaluer e2 d'abord et sauver dans $v1 *)
+         tr_expr e2 @@ move v1 t0
+         (* Puis évaluer e1 dans $v0 *)
+         @@ tr_expr e1 @@ move v0 t0
+         @@ cleanup @@ jr ra
      | e :: _rest -> 
-         (* Retours multiples : pas supporté pour l'instant *)
+         (* Plus de 2 retours : pas supporté pour l'instant *)
          tr_expr e @@ move v0 t0 @@ cleanup @@ jr ra)
     
   | Expr(e) ->
@@ -600,10 +736,12 @@ let tr_data () =
 let tr_prog p =
   (* Collecter les définitions de structures *)
   struct_defs := [];
+  (* Initialiser la table des fonctions *)
+  Hashtbl.clear func_table;
   let (_, decls) = p in
   List.iter (fun d -> match d with
     | Struct sd -> struct_defs := sd :: !struct_defs
-    | _ -> ()
+    | Fun fd -> Hashtbl.add func_table fd.fname.id (List.length fd.return)
   ) decls;
   
   collect_strings p;

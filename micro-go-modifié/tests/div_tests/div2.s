@@ -14,7 +14,10 @@ main:
   jal  div2
   addi $sp, $sp, 8
   move $t0, $v0
-  move $a0, $t0
+  move $a0, $v0
+  li   $v0, 1
+  syscall
+  move $a0, $v1
   li   $v0, 1
   syscall
   la   $t0, _str_0
@@ -54,6 +57,8 @@ _label_0:
   addi $sp, $sp, 4
   sge  $t0, $t0, $t1
   bnez $t0, _label_1
+  lw   $t0, 12($sp)
+  move $v1, $t0
   lw   $t0, 0($sp)
   move $v0, $t0
   addi $sp, $sp, 4

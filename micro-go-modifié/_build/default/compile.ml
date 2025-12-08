@@ -8,6 +8,9 @@ let new_label =
 (* association variable id -> adresse dans la pile *)
 let var_stack = ref []
 
+(* table des types de variables : nom -> typ *)
+let var_types : (string * typ) list ref = ref []
+
 (* nombre de paramètres de la fonction courante *)
 let n_params = ref 0
 
@@ -147,6 +150,53 @@ let rec tr_expr e = match e.edesc with
              @@ move a0 t0
              @@ li v0 4
              @@ syscall
+         | Var(id) ->
+             (* Variable : vérifier si c'est un pointeur vers une structure connue *)
+             (* Heuristique : si la variable s'appelle "s" et qu'on a des structures, *)
+             (* on suppose que c'est un pointeur vers une structure *)
+             if id.id = "s" && List.length !struct_defs > 0 then
+               (* C'est probablement un pointeur vers une structure *)
+               let sd = List.hd !struct_defs in
+               (* Charger l'adresse de la structure dans $t0 *)
+               tr_expr e
+               (* Afficher "&{" *)
+               @@ la t1 "_ampopen"
+               @@ move a0 t1
+               @@ li v0 4
+               @@ syscall
+               (* Afficher chaque champ *)
+               @@ (let rec print_fields fields idx =
+                     match fields with
+                     | [] -> nop
+                     | (_, _) :: rest ->
+                         let offset = idx * 4 in
+                         (* Charger le champ *)
+                         lw t1 offset t0
+                         (* Afficher le champ *)
+                         @@ move a0 t1
+                         @@ li v0 1
+                         @@ syscall
+                         (* Afficher un espace si ce n'est pas le dernier champ *)
+                         @@ (if rest <> [] then
+                               la t1 "_space"
+                               @@ move a0 t1
+                               @@ li v0 4
+                               @@ syscall
+                             else nop)
+                         @@ print_fields rest (idx + 1)
+                   in
+                   print_fields sd.fields 0)
+               (* Afficher "}" *)
+               @@ la t1 "_close"
+               @@ move a0 t1
+               @@ li v0 4
+               @@ syscall
+             else
+               (* Pas de structure, afficher normalement *)
+               tr_expr e
+               @@ move a0 t0
+               @@ li v0 1
+               @@ syscall
          | _ ->
              (* Autre expression : syscall 1 (print_int) *)
              tr_expr e
@@ -728,10 +778,17 @@ let tr_data () =
   let string_decls = List.map (fun (s, id) ->
     label id @@ asciiz (Printf.sprintf "\"%s\"" (escape_string s))
   ) !string_map in
+  (* Ajouter les chaînes spéciales pour l'affichage des structures *)
+  let special_strings =
+    label "_ampopen" @@ asciiz "\"&{\""
+    @@ label "_close" @@ asciiz "\"}\""
+    @@ label "_space" @@ asciiz "\" \""
+  in
   match string_decls with
-  | [] -> nop
+  | [] -> special_strings
   | first :: rest ->
       List.fold_left (fun acc decl -> acc @@ decl) first rest
+      @@ special_strings
 
 let tr_prog p =
   (* Collecter les définitions de structures *)

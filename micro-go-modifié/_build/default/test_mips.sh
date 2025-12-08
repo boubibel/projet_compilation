@@ -17,7 +17,8 @@ fail_count=0
 
 for f in $GOFILES; do
     base=$(basename "$f" .go)
-    s_file="tests/${base}.s"
+    # Utiliser le chemin du fichier .go pour trouver le .s correspondant
+    s_file="${f%.go}.s"
     
     echo -n "Generating MIPS for $f ... "
     

@@ -36,3 +36,9 @@ _label_1:
   addi $sp, $sp, 4
   jr   $ra
 .data
+_ampopen:
+  .asciiz "&{"
+_close:
+  .asciiz "}"
+_space:
+  .asciiz " "

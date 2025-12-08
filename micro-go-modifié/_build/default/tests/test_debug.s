@@ -180,3 +180,9 @@ _str_1:
   .asciiz "test: a="
 _str_0:
   .asciiz "\n"
+_ampopen:
+  .asciiz "&{"
+_close:
+  .asciiz "}"
+_space:
+  .asciiz " "

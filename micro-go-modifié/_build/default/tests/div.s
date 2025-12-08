@@ -82,8 +82,25 @@ main:
   li   $v0, 4
   syscall
   lw   $t0, 0($sp)
-  move $a0, $t0
+  la   $t1, _ampopen
+  move $a0, $t1
+  li   $v0, 4
+  syscall
+  lw   $t1, 0($t0)
+  move $a0, $t1
   li   $v0, 1
+  syscall
+  la   $t1, _space
+  move $a0, $t1
+  li   $v0, 4
+  syscall
+  lw   $t1, 4($t0)
+  move $a0, $t1
+  li   $v0, 1
+  syscall
+  la   $t1, _close
+  move $a0, $t1
+  li   $v0, 4
   syscall
   la   $t0, _str_0
   move $a0, $t0
@@ -246,3 +263,9 @@ _str_1:
   .asciiz " "
 _str_0:
   .asciiz "\n"
+_ampopen:
+  .asciiz "&{"
+_close:
+  .asciiz "}"
+_space:
+  .asciiz " "

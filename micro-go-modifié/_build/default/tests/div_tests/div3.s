@@ -22,16 +22,12 @@ main:
   move $a0, $t0
   li   $v0, 1
   syscall
-  lw   $t0, 0($sp)
-  lw   $t0, 4($t0)
-  move $a0, $t0
-  li   $v0, 1
-  syscall
   la   $t0, _str_0
   move $a0, $t0
   li   $v0, 4
   syscall
   lw   $t0, 0($sp)
+  lw   $t0, 4($t0)
   move $a0, $t0
   li   $v0, 1
   syscall
@@ -53,14 +49,54 @@ div3:
   move $t0, $v0
   # set r at offset 0
   sw   $t0, 0($sp)
-  li   $t0, 7
+  li   $t0, 0
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
   lw   $t0, 4($sp)
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
   sw   $t1, 0($t0)
-  li   $t0, 3
+  b    _label_0
+_label_1:
+  lw   $t0, 0($sp)
+  lw   $t1, 0($t0)
+  addi $t1, $t1, 1
+  sw   $t1, 0($t0)
+  lw   $t0, 12($sp)
+  move $a0, $t0
+  li   $v0, 1
+  syscall
+  la   $t0, _str_1
+  move $a0, $t0
+  li   $v0, 4
+  syscall
+  lw   $t0, 8($sp)
+  addi $sp, $sp, -4
+  sw   $t0, 0($sp)
+  lw   $t0, 16($sp)
+  lw   $t1, 0($sp)
+  addi $sp, $sp, 4
+  sub  $t0, $t0, $t1
+  # set a at offset 12
+  sw   $t0, 12($sp)
+  lw   $t0, 12($sp)
+  move $a0, $t0
+  li   $v0, 1
+  syscall
+  la   $t0, _str_0
+  move $a0, $t0
+  li   $v0, 4
+  syscall
+_label_0:
+  lw   $t0, 8($sp)
+  addi $sp, $sp, -4
+  sw   $t0, 0($sp)
+  lw   $t0, 16($sp)
+  lw   $t1, 0($sp)
+  addi $sp, $sp, 4
+  sge  $t0, $t0, $t1
+  bnez $t0, _label_1
+  lw   $t0, 12($sp)
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
   lw   $t0, 4($sp)
@@ -74,5 +110,7 @@ div3:
   addi $sp, $sp, 4
   jr   $ra
 .data
+_str_1:
+  .asciiz " "
 _str_0:
   .asciiz "\n"

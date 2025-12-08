@@ -66,7 +66,7 @@ div3:
   lw   $t0, 4($sp)
   lw   $t1, 0($sp)
   addi $sp, $sp, 4
-  sw   $t1, 0($t0)
+  sw   $t1, 4($t0)
   lw   $t0, 0($sp)
   move $v0, $t0
   addi $sp, $sp, 4

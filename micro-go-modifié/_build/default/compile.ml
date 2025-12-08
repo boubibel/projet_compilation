@@ -288,11 +288,30 @@ and tr_instr i = match i.idesc with
          let code_struct = tr_expr e_struct in
          (* 5. Restaurer var_stack *)
          var_stack := old_stack;
-         (* 6. Trouver l'offset du champ *)
-         let offset = match field.id with
-           | "x" -> 0
-           | "y" -> 4
-           | _ -> 0
+         (* 6. Trouver l'offset du champ dynamiquement *)
+         let offset = 
+           try
+             let rec find_field_offset structs =
+               match structs with
+               | [] -> 
+                   (match field.id with
+                    | "x" | "quo" -> 0
+                    | "y" | "rem" -> 4
+                    | _ -> 0)
+               | sd :: rest ->
+                   let rec find_in_fields fields idx =
+                     match fields with
+                     | [] -> None
+                     | (fid, _) :: rest_fields ->
+                         if fid.id = field.id then Some (idx * 4)
+                         else find_in_fields rest_fields (idx + 1)
+                   in
+                   match find_in_fields sd.fields 0 with
+                   | Some off -> off
+                   | None -> find_field_offset rest
+             in
+             find_field_offset !struct_defs
+           with Not_found -> 0
          in
          (* 7. Dépiler la valeur et la stocker *)
          code_val @@ code_push @@ code_struct @@ pop t1 @@ sw t1 offset t0
@@ -337,7 +356,6 @@ and tr_instr i = match i.idesc with
     
   | Inc(e) ->
     (* Incrémenter : e++ *)
-    (* Seules les variables sont supportées pour Inc *)
     (match e.edesc with
      | Var(id) ->
          (try
@@ -347,11 +365,41 @@ and tr_instr i = match i.idesc with
            @@ sw t0 offset sp
          with Not_found ->
            comment (Printf.sprintf "Inc: var %s non trouvée" id.id))
+     | Dot(struct_e, field) ->
+         (* Incrémenter un champ de structure : r.quo++ *)
+         let code_struct = tr_expr struct_e in  (* $t0 = adresse de la structure *)
+         let offset = 
+           try
+             let rec find_field_offset structs =
+               match structs with
+               | [] -> 
+                   (match field.id with
+                    | "x" | "quo" -> 0
+                    | "y" | "rem" -> 4
+                    | _ -> 0)
+               | sd :: rest ->
+                   let rec find_in_fields fields idx =
+                     match fields with
+                     | [] -> None
+                     | (fid, _) :: rest_fields ->
+                         if fid.id = field.id then Some (idx * 4)
+                         else find_in_fields rest_fields (idx + 1)
+                   in
+                   match find_in_fields sd.fields 0 with
+                   | Some off -> off
+                   | None -> find_field_offset rest
+             in
+             find_field_offset !struct_defs
+           with Not_found -> 0
+         in
+         code_struct
+         @@ lw t1 offset t0      (* charger la valeur du champ *)
+         @@ addi t1 t1 1         (* incrémenter *)
+         @@ sw t1 offset t0      (* sauvegarder *)
      | _ -> comment "Inc: expression non supportée")
     
   | Dec(e) ->
     (* Décrémenter : e-- *)
-    (* Seules les variables sont supportées pour Dec *)
     (match e.edesc with
      | Var(id) ->
          (try
@@ -361,6 +409,37 @@ and tr_instr i = match i.idesc with
            @@ sw t0 offset sp
          with Not_found ->
            comment (Printf.sprintf "Dec: var %s non trouvée" id.id))
+     | Dot(struct_e, field) ->
+         (* Décrémenter un champ de structure : r.quo-- *)
+         let code_struct = tr_expr struct_e in
+         let offset = 
+           try
+             let rec find_field_offset structs =
+               match structs with
+               | [] -> 
+                   (match field.id with
+                    | "x" | "quo" -> 0
+                    | "y" | "rem" -> 4
+                    | _ -> 0)
+               | sd :: rest ->
+                   let rec find_in_fields fields idx =
+                     match fields with
+                     | [] -> None
+                     | (fid, _) :: rest_fields ->
+                         if fid.id = field.id then Some (idx * 4)
+                         else find_in_fields rest_fields (idx + 1)
+                   in
+                   match find_in_fields sd.fields 0 with
+                   | Some off -> off
+                   | None -> find_field_offset rest
+             in
+             find_field_offset !struct_defs
+           with Not_found -> 0
+         in
+         code_struct
+         @@ lw t1 offset t0
+         @@ addi t1 t1 (-1)
+         @@ sw t1 offset t0
      | _ -> comment "Dec: expression non supportée")
     
   | Vars(ids, _typ_opt, s) ->

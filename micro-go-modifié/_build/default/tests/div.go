@@ -22,7 +22,7 @@ func div3(a,b int) *res {
   };
 func main() {
 	fmt.Print(div1(45,6)); fmt.Print("\n");
-	fmt.Print(div2(45,6)); fmt.Print("\n");
-	r:=div3(45,6); fmt.Print(r.quo,r.rem); fmt.Print("\n");
-	fmt.Print(r); fmt.Print("\n");
+	q,r := div2(45,6); fmt.Print(q); fmt.Print(" "); fmt.Print(r); fmt.Print("\n");
+	s:=div3(45,6); fmt.Print(s.quo); fmt.Print(" "); fmt.Print(s.rem); fmt.Print("\n");
+	fmt.Print(s); fmt.Print("\n");
 };

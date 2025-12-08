@@ -12,11 +12,11 @@ On y a détaillé les grandes étapes, ce que font les tests, et des problèmes 
 **Pour Tester la partie 1 : make test**
 **Pour la partie 2 :**
 **Nous avons testé les fichiers mips (en .s) avec MARS**
-**Nous avons utilisé l'intelligence artificielle pour créer un script permettant de créer les fichiers mips. Et également pour la création de certains**
+**Nous avons utilisé l'intelligence artificielle pour créer un script permettant de créer les fichiers mips. Et également pour la création de certains tests pour être sûrs de couvrir tous les cas de figures**
 
 
 On a enlevé du make test les tests relevant une erreur pour permettre d'executer tous les tests qui passent, on vérifie les tests relevant une erreur un par un avec :
-**./_build/default/mgoc.exe tests/nom.go**
+**./_build/default/mgoc.exe -- type-only tests/nom.go**
 
 Arith.go : calcul arithmétique
 Teste : priorités d'associativité entre les opérations
@@ -66,11 +66,17 @@ Multiple_assign.go : Teste assignations multiples
 
 ## Tests Partie 2
 
-**./test_mips.sh pour créer les fichiers MIPS**
+Nous avons créer beaucoup de tests dans la Partie 2, essentiellement pour régler le problème lié à div.go qui ne renvoyait pas les bonnes valeurs lors de l'éxecution dans MARS. On a ainsi séparé les 3 fonctions dans plusieurs fichiers pour tester leurs comportements séparément.
+
+**./make_mips.sh pour créer les fichiers MIPS**
 
 
 ## Commandes :
 - Executer fichier de test : go run tests/nom.go
+- ./make_mips.sh pour créer tous les fichiers MIPS
+- Tester typage : ./_build/default/mgoc.exe -- type-only tests/nom.go
+- Construire le mips un par un : ./_build/default/mgoc.exe tests/nom.go
+
 
 
 
@@ -117,12 +123,49 @@ Une variable globale last_was_semicolon_candidate (bool) indique si le dernier t
 ## Grandes étapes : 
 
 
-### 1. mgolexer.mll (Lexer)
-Objectif: Éliminer l'ambiguïté entre une simple expression ident et une déclaration avec := (ex: x,y := ...).
+### mgolexer.mll (Lexer)
 
-### 2. mgoparser.mly (Parser)
-Objectif: Supprimer les conflits shift/reduce et reduce/reduce en restructurant la grammaire des expressions et déclarations.
+Gestion des mots-clés : Création d'une table de hachage pour identifier les mots-clés Go (package, func, if, for, return, etc.) et les distinguer des identifiants simples.
 
+Parsing des entiers : Implémentation du support des littéraux entiers décimaux et hexadécimaux (0x/0X) avec validation des bornes (0 à 2⁶³-1).
+
+Gestion des chaînes : Mise en place d'un buffer pour construire les chaînes de caractères avec support des séquences d'échappement (\n, \t, \", \\).
+
+Injection automatique de points-virgules : Système avec un flag last_was_semicolon_candidate pour insérer automatiquement des ; après certains tokens (identifiants, littéraux, return, ++, --, ), }).
+
+Gestion des commentaires : Implémentation de deux types de commentaires (multi-ligne /* */ et ligne simple //) avec intégration du système d'injection de points-virgules.
+
+Reconnaissance des opérateurs : Distinction entre opérateurs multi-caractères (&&, ||, ==, !=, <=, >=, ++, --) et simples (+, -, *, /, %, !, =).
+
+Traitement spécial pour := : Détection des listes d'identifiants séparées par des virgules suivies de := pour générer un token IDS_DECL (déclaration courte).
+
+Gestion des retours à la ligne : Suivi des nouvelles lignes pour la localisation d'erreurs et l'injection contextuelle de points-virgules.
+
+Tokens de ponctuation : Reconnaissance des délimiteurs ((, ), {, }, ;, ,, .) essentiels pour la structure syntaxique.
+
+Gestion d'erreurs : Levée d'exceptions avec messages explicites pour caractères inconnus, littéraux invalides, commentaires et chaînes non terminés.
+
+### mgoparser.mly (Parser)
+
+Déclaration des tokens et priorités : Définition de tous les tokens du lexer et établissement des règles de priorité/associativité pour les opérateurs (%left, %right, %nonassoc).
+
+Structure du programme : Règle prog pour parser la déclaration package, l'import optionnel de fmt et la liste des déclarations globales (structures et fonctions).
+
+Définition des structures : Parser pour type ident struct { fields } avec gestion de listes de champs de la forme ident+ type séparés par des points-virgules.
+
+Système de types : Règle typ pour reconnaître les types de base (int, bool, string) et les types structurés (pointeurs *ident).
+
+Déclarations de fonctions : Parser pour func ident(params) return_type? bloc avec support des paramètres multiples et retours multiples (tuple).
+
+Gestion des blocs : Structure { (instr ;)* instr? } permettant des blocs vides ou avec instructions séparées par des points-virgules (le dernier étant optionnel).
+
+Instructions de contrôle : Implémentation de if/else, for (avec ou sans condition), var (avec type et initialisation optionnels), et return avec valeurs multiples.
+
+Instructions simples : Support des expressions, incréments/décréments (++/--), affectations multiples (x,y = e1,e2) et déclarations courtes (x,y := e1,e2).
+
+Expressions complexes : Système d'expressions avec opérateurs binaires (arithmétiques, logiques, comparaisons) et unaires (négation -, !), accès aux champs (.), appels de fonctions.
+
+Cas spéciaux : Gestion de new(StructName) pour l'allocation, fmt.Print(...) pour l'affichage, et construction d'AST avec localisation (loc) pour chaque nœud syntaxique.
 
 
 
@@ -167,6 +210,7 @@ Set → assignation simple, champs structures, ou assignation multiple avec push
 Inc/Dec → sur variables ou champs structures
 Vars → alloue sur pile, ajuste offsets, cas spécial pour init par call multi-retour
 Return → nettoie locals, restaure $ra, place valeurs dans $v0/$v1, jr $ra
+
 4. Traduction des fonctions (tr_fun)
 
 Initialise var_stack avec paramètres (ordre inversé : dernier arg = 0($sp))

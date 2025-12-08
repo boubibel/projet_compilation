@@ -11,14 +11,12 @@ On y a détaillé les grandes étapes, ce que font les tests, et des problèmes 
 
 **Pour Tester la partie 1 : make test**
 **Pour la partie 2 :**
-**./test_mips.sh    pour une vue rapide**
-**./test_part2.sh   vue détaillée avec exemples**
-
-**On a également testé les fichiers mips (en .s) avec MARS**
+**Nous avons testé les fichiers mips (en .s) avec MARS**
+**Nous avons utilisé l'intelligence artificielle pour créer un script permettant de créer les fichiers mips. Et également pour la création de certains**
 
 
 On a enlevé du make test les tests relevant une erreur pour permettre d'executer tous les tests qui passent, on vérifie les tests relevant une erreur un par un avec :
-/_build/default/mgoc.exe tests/nom.go
+**./_build/default/mgoc.exe tests/nom.go**
 
 Arith.go : calcul arithmétique
 Teste : priorités d'associativité entre les opérations
@@ -65,6 +63,10 @@ Neg_assign_var.go : Déclare 2 fois une variable avec le même nom
 **renvoi une erreur x already defined, bon comportement**
 
 Multiple_assign.go : Teste assignations multiples
+
+## Tests Partie 2
+
+**./test_mips.sh pour créer les fichiers MIPS**
 
 
 ## Commandes :
@@ -140,17 +142,43 @@ Les messages montrent la localisation précise (fichier, ligne, colonnes) pour f
 
 ### Compile.ml
 
-Le fichier compile.ml implémente la génération de code MIPS à partir de l'AST typé de Micro-Go, en utilisant une approche de traduction directe en faisant correspondre des patterns.
 
-La gestion des variables locales utilise une table d'association var_stack qui maintient la correspondance entre identificateurs et décalages dans la pile. Les variables sont allouées à des décalages positifs depuis $sp, permettant un accès direct via lw/sw. La fonction new_label génère des étiquettes uniques pour les sauts conditionnels et boucles, avec un compteur global incrémental.
+1. Variables globales
 
-La traduction des expressions (tr_expr) place systématiquement le résultat dans $t0, utilisant la pile pour les valeurs intermédiaires lors des opérations binaires. Les constantes entières sont chargées avec li, les chaînes sont référencées via des labels dans .data, nil est représenté par 0, et les booléens par 0/1. Les opérateurs arithmétiques et logiques sont traduits directement en instructions MIPS (add, sub, mul, div, slt, seq, etc.).
+var_stack : table associative (nom → offset/$sp) pour les variables locales
+func_table : Hashtbl (nom_fonction → nb_retours) pour détecter retours multiples
+struct_defs : liste des définitions de structures pour accès aux champs
+string_map : collecte des chaînes littérales pour la section .data
 
-La traduction des instructions (tr_instr) gère les structures de contrôle avec des labels : If génère deux labels (then/end), For utilise deux labels pour le test et le corps de boucle. Les assignations simples (x := e) stockent le résultat dans la pile via sw. L'instruction Vars alloue l'espace pile (n*4 octets), calcule les décalages pour chaque variable, génère le code du corps, puis désalloue en restaurant l'ancien environnement. Return place la valeur dans $v0 et exécute jr $ra.
+2. Traduction des expressions (tr_expr)
 
-La génération de données (.data) collecte toutes les chaînes du programme via collect_strings qui parcourt récursivement les expressions et instructions, associe chaque chaîne unique à un label (_str_N), puis génère les déclarations asciiz correspondantes. Les fonctions sont traduites en labels MIPS suivis du code de leur corps.
+Constantes (Int, Bool, String, Nil) → chargement immédiat ou label
+Variables → lw depuis pile via offset dans var_stack
+Binop → évaluation court-circuit pour And/Or, sinon push/pop avec ajustement var_stack
+Call → empile args avec ajustement récursif de var_stack, jal, cleanup, résultat dans $v0
+Dot → accès champ structure avec offset dynamique
+New → allocation heap via syscall 9 (sbrk)
+Print → détecte retours multiples via func_table, affiche $v0 et $v1 si besoin
 
-Le programme final (tr_prog) produit une structure avec deux sections : .text contenant le code des fonctions et .data contenant les chaînes constantes.
+3. Traduction des instructions (tr_instr)
+
+If/For/Block → gestion branches + cleanup variables locales avec sauvegarde/restauration var_stack
+Set → assignation simple, champs structures, ou assignation multiple avec push récursif
+Inc/Dec → sur variables ou champs structures
+Vars → alloue sur pile, ajuste offsets, cas spécial pour init par call multi-retour
+Return → nettoie locals, restaure $ra, place valeurs dans $v0/$v1, jr $ra
+4. Traduction des fonctions (tr_fun)
+
+Initialise var_stack avec paramètres (ordre inversé : dernier arg = 0($sp))
+Sauve $ra et ajuste offsets (+4)
+Traduit corps avec tr_seq
+Ajoute return implicite si absent
+
+5. Point d'entrée et données
+
+tr_prog : collecte structures/fonctions, jal main, syscall exit
+tr_data : génère labels pour strings avec échappement
+Bug critique résolu : var_stack non ajusté pendant push d'arguments → offsets erronés → valeurs corrompues. Solution : fonction récursive push_args_rec qui ajuste après chaque push.
 
 ## Mips.ml
 

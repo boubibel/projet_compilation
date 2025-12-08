@@ -1,7 +1,7 @@
 # Projet Compilation
 
-Lucas Iltis
-Abel Julin
+Lucas Iltis / 
+Abel Julin /
 LDD3-IM
 
 ## Organisation du Travail

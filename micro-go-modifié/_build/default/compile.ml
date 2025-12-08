@@ -150,53 +150,12 @@ let rec tr_expr e = match e.edesc with
              @@ move a0 t0
              @@ li v0 4
              @@ syscall
-         | Var(id) ->
-             (* Variable : vérifier si c'est un pointeur vers une structure connue *)
-             (* Heuristique : si la variable s'appelle "s" et qu'on a des structures, *)
-             (* on suppose que c'est un pointeur vers une structure *)
-             if id.id = "s" && List.length !struct_defs > 0 then
-               (* C'est probablement un pointeur vers une structure *)
-               let sd = List.hd !struct_defs in
-               (* Charger l'adresse de la structure dans $t0 *)
-               tr_expr e
-               (* Afficher "&{" *)
-               @@ la t1 "_ampopen"
-               @@ move a0 t1
-               @@ li v0 4
-               @@ syscall
-               (* Afficher chaque champ *)
-               @@ (let rec print_fields fields idx =
-                     match fields with
-                     | [] -> nop
-                     | (_, _) :: rest ->
-                         let offset = idx * 4 in
-                         (* Charger le champ *)
-                         lw t1 offset t0
-                         (* Afficher le champ *)
-                         @@ move a0 t1
-                         @@ li v0 1
-                         @@ syscall
-                         (* Afficher un espace si ce n'est pas le dernier champ *)
-                         @@ (if rest <> [] then
-                               la t1 "_space"
-                               @@ move a0 t1
-                               @@ li v0 4
-                               @@ syscall
-                             else nop)
-                         @@ print_fields rest (idx + 1)
-                   in
-                   print_fields sd.fields 0)
-               (* Afficher "}" *)
-               @@ la t1 "_close"
-               @@ move a0 t1
-               @@ li v0 4
-               @@ syscall
-             else
-               (* Pas de structure, afficher normalement *)
-               tr_expr e
-               @@ move a0 t0
-               @@ li v0 1
-               @@ syscall
+         | Var(_) ->
+             (* Variable : afficher simplement sa valeur (qui peut être une adresse) *)
+             tr_expr e
+             @@ move a0 t0
+             @@ li v0 1
+             @@ syscall
          | _ ->
              (* Autre expression : syscall 1 (print_int) *)
              tr_expr e

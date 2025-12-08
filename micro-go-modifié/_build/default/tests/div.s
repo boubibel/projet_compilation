@@ -24,7 +24,6 @@ main:
   move $a0, $t0
   li   $v0, 4
   syscall
-  addi $sp, $sp, -8
   li   $t0, 45
   addi $sp, $sp, -4
   sw   $t0, 0($sp)
@@ -33,18 +32,11 @@ main:
   sw   $t0, 0($sp)
   jal  div2
   addi $sp, $sp, 8
-  sw   $v0, 0($sp)
-  sw   $v1, 4($sp)
-  lw   $t0, 0($sp)
-  move $a0, $t0
+  move $t0, $v0
+  move $a0, $v0
   li   $v0, 1
   syscall
-  la   $t0, _str_1
-  move $a0, $t0
-  li   $v0, 4
-  syscall
-  lw   $t0, 4($sp)
-  move $a0, $t0
+  move $a0, $v1
   li   $v0, 1
   syscall
   la   $t0, _str_0
@@ -61,16 +53,12 @@ main:
   jal  div3
   addi $sp, $sp, 8
   move $t0, $v0
-  # set s at offset 0
+  # set r at offset 0
   sw   $t0, 0($sp)
   lw   $t0, 0($sp)
   lw   $t0, 0($t0)
   move $a0, $t0
   li   $v0, 1
-  syscall
-  la   $t0, _str_1
-  move $a0, $t0
-  li   $v0, 4
   syscall
   lw   $t0, 0($sp)
   lw   $t0, 4($t0)
@@ -82,31 +70,14 @@ main:
   li   $v0, 4
   syscall
   lw   $t0, 0($sp)
-  la   $t1, _ampopen
-  move $a0, $t1
-  li   $v0, 4
-  syscall
-  lw   $t1, 0($t0)
-  move $a0, $t1
+  move $a0, $t0
   li   $v0, 1
-  syscall
-  la   $t1, _space
-  move $a0, $t1
-  li   $v0, 4
-  syscall
-  lw   $t1, 4($t0)
-  move $a0, $t1
-  li   $v0, 1
-  syscall
-  la   $t1, _close
-  move $a0, $t1
-  li   $v0, 4
   syscall
   la   $t0, _str_0
   move $a0, $t0
   li   $v0, 4
   syscall
-  addi $sp, $sp, 12
+  addi $sp, $sp, 4
   lw   $ra, 0($sp)
   addi $sp, $sp, 4
   jr   $ra
@@ -259,8 +230,6 @@ _label_1:
   addi $sp, $sp, 4
   jr   $ra
 .data
-_str_1:
-  .asciiz " "
 _str_0:
   .asciiz "\n"
 _ampopen:
